@@ -11,18 +11,19 @@ return {
   'mfussenegger/nvim-dap',
   -- NOTE: And you can specify dependencies as well
   dependencies = {
-    -- Creates a beautiful debugger UI
+    -- Creates a beautiful debugger UI.
     'rcarriga/nvim-dap-ui',
 
-    -- Required dependency for nvim-dap-ui
+    -- Required dependency for nvim-dap-ui.
     'nvim-neotest/nvim-nio',
 
-    -- Installs the debug adapters for you
+    -- Installs the debug adapters for you.
     'williamboman/mason.nvim',
     'jay-babu/mason-nvim-dap.nvim',
 
-    -- Add your own debuggers here
+    -- Add your own debuggers here.
     'leoluz/nvim-dap-go',
+    'mfussenegger/nvim-dap-python',
   },
   keys = {
     -- Basic debugging keymaps, feel free to change to your liking!
@@ -136,7 +137,7 @@ return {
     dap.listeners.before.event_terminated['dapui_config'] = dapui.close
     dap.listeners.before.event_exited['dapui_config'] = dapui.close
 
-    -- Install golang specific config
+    -- Install golang specific config.
     require('dap-go').setup {
       delve = {
         -- On Windows delve must be run attached or it crashes.
@@ -144,5 +145,10 @@ return {
         detached = vim.fn.has 'win32' == 0,
       },
     }
+
+    -- Install Python specific config.
+    local dap_python = require 'dap-python'
+    dap_python.setup()
+    dap_python.test_runner = 'pytest'
   end,
 }

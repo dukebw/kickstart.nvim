@@ -760,7 +760,7 @@ require('lazy').setup({
         sources = {
           {
             name = 'lazydev',
-            -- set group index to 0 to skip loading LuaLS completions as lazydev recommends it
+            -- Set group index to 0 to skip loading LuaLS completions as lazydev recommends it.
             group_index = 0,
           },
           { name = 'nvim_lsp' },
@@ -792,10 +792,10 @@ require('lazy').setup({
   -- Highlight todo, notes, etc in comments
   { 'folke/todo-comments.nvim', event = 'VimEnter', dependencies = { 'nvim-lua/plenary.nvim' }, opts = { signs = false } },
 
-  { -- Collection of various small independent plugins/modules
+  { -- Collection of various small independent plugins/modules.
     'echasnovski/mini.nvim',
     config = function()
-      -- Better Around/Inside textobjects
+      -- Better Around/Inside textobjects.
       --
       -- Examples:
       --  - va)  - [V]isually select [A]round [)]paren
@@ -803,7 +803,7 @@ require('lazy').setup({
       --  - ci'  - [C]hange [I]nside [']quote
       require('mini.ai').setup { n_lines = 500 }
 
-      -- Add/delete/replace surroundings (brackets, quotes, etc.)
+      -- Add/delete/replace surroundings (brackets, quotes, etc.).
       --
       -- - saiw) - [S]urround [A]dd [I]nner [W]ord [)]Paren
       -- - sd'   - [S]urround [D]elete [']quotes
@@ -812,14 +812,14 @@ require('lazy').setup({
 
       -- Simple and easy statusline.
       --  You could remove this setup call if you don't like it,
-      --  and try some other statusline plugin
+      --  and try some other statusline plugin.
       local statusline = require 'mini.statusline'
-      -- set use_icons to true if you have a Nerd Font
+      -- Set use_icons to true if you have a Nerd Font.
       statusline.setup { use_icons = vim.g.have_nerd_font }
 
       -- You can configure sections in the statusline by overriding their
       -- default behavior. For example, here we set the section for
-      -- cursor location to LINE:COLUMN
+      -- cursor location to LINE:COLUMN.
       ---@diagnostic disable-next-line: duplicate-set-field
       statusline.section_location = function()
         return '%2l:%-2v'
@@ -864,7 +864,7 @@ require('lazy').setup({
   --  Here are some example plugins that I've included in the Kickstart repository.
   --  Uncomment any of the lines below to enable them (you will need to restart nvim).
   --
-  -- require 'kickstart.plugins.debug',
+  require 'kickstart.plugins.debug',
   -- require 'kickstart.plugins.indent_line',
   -- require 'kickstart.plugins.lint',
   -- require 'kickstart.plugins.autopairs',
