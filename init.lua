@@ -71,6 +71,13 @@ vim.opt.scrolloff = 0
 -- [[ Basic Keymaps ]]
 --  See `:help vim.keymap.set()`
 
+-- Copy the current file's relative path.
+vim.keymap.set('n', '<leader>cp', function()
+  local relative_path = vim.fn.expand '%'
+  vim.fn.setreg('+', relative_path)
+  vim.notify('Copied: ' .. relative_path, vim.log.levels.INFO)
+end, { silent = true, desc = 'Copy current relative filepath to clipboard.' })
+
 -- Save the file.
 vim.keymap.set('n', '`', ':w<CR>')
 
