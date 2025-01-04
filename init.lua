@@ -372,6 +372,13 @@ require('lazy').setup({
       vim.keymap.set('n', '<leader>sg', function()
         builtin.live_grep { glob_pattern = '!third-party' }
       end, { desc = '[S]earch by [G]rep. Ignore third-party directory.' })
+      vim.keymap.set('n', '<leader>sx', function()
+        vim.ui.input({ prompt = 'Enter glob pattern: ' }, function(pattern)
+          if pattern then
+            builtin.live_grep { glob_pattern = pattern }
+          end
+        end)
+      end, { desc = '[S]earch by [G]rep with glob pattern.' })
       vim.keymap.set('n', '<leader>sd', builtin.diagnostics, { desc = '[S]earch [D]iagnostics' })
       vim.keymap.set('n', '<leader>sr', builtin.resume, { desc = '[S]earch [R]esume' })
       vim.keymap.set('n', '<leader>so', builtin.oldfiles, { desc = '[S]earch Recent Files ("." for repeat)' })
