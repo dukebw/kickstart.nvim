@@ -102,6 +102,23 @@ vim.keymap.set('i', '<C-c>', '<Esc><Esc>', {
   desc = 'Map Ctrl-C to behave exactly like Escape',
 })
 
+local function follow_symlink()
+  local curr_bufname = vim.api.nvim_buf_get_name(0)
+
+  -- Follow any symlinks.
+  local resolved_bufname = vim.loop.fs_realpath(curr_bufname)
+  if resolved_bufname and resolved_bufname ~= curr_bufname then
+    -- Update the buffer name to the resolved file.
+    vim.api.nvim_buf_set_name(0, resolved_bufname)
+    vim.cmd.edit(resolved_bufname)
+  else
+    vim.notify('Not a symlink or already resolved.', vim.log.levels.INFO)
+  end
+end
+
+-- Set buffer name to the resolved symlink name of the backing filepath.
+vim.keymap.set('n', '<leader>y', follow_symlink, { noremap = true, silent = true })
+
 -- Execute the lua code under the cursor.
 vim.keymap.set('n', '<leader>x', ':.lua<CR>')
 
