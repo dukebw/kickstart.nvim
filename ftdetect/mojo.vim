@@ -1,0 +1,1 @@
+/home/ubuntu/work/modular/utils/mojo/vim/ftdetect/mojo.vim
