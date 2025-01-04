@@ -4,4 +4,6 @@
 -- See the kickstart.nvim README for more information
 return {
   require 'custom.plugins.completions',
+  require 'custom.plugins.llm',
+  require 'custom.plugins.oil',
 }
