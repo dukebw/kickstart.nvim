@@ -19,6 +19,14 @@ return {
                 i = '<C-q>',
               },
             },
+            options = {
+              modes = {
+                n = '<C-d>',
+              },
+              callback = 'keymaps.options',
+              description = 'Options',
+              hide = true,
+            },
           },
         },
         inline = {
