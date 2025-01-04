@@ -570,6 +570,14 @@ require('lazy').setup({
       --  - capabilities (table): Override fields in capabilities. Can be used to disable certain LSP features.
       --  - settings (table): Override the default settings passed when initializing the server.
       --        For example, to see the options for `lua_ls`, you could go to: https://luals.github.io/wiki/settings/
+
+      -- Set variables used by pylsp.
+      -- Try to get config from environment variables, falling back to system defaults.
+      local pylsp_venv_path = vim.env.PYLSP_VENV_PATH or vim.fn.expand '~/.venv'
+      local python_exe = pylsp_venv_path .. '/bin/python'
+      local ruff_exe = pylsp_venv_path .. '/bin/ruff'
+      local mypy_config = vim.env.PYLSP_MYPY_CONFIG or vim.fn.expand '~/.config/mypy/mypy.ini'
+
       local servers = {
         clangd = {},
         -- gopls = {},
@@ -582,7 +590,49 @@ require('lazy').setup({
         --
         -- But for many setups, the LSP (`ts_ls`) will work just fine
         -- ts_ls = {},
-        --
+        pylsp = {
+          cmd = { python_exe, '-m', 'pylsp' },
+          settings = {
+            pylsp = {
+              plugins = {
+                ruff = {
+                  enabled = true,
+                  formatEnabled = true,
+                  executable = ruff_exe,
+                  extendSelect = { 'I' },
+                  format = { 'I' },
+                  lineLength = 80,
+                  select = { 'ALL' },
+                  -- Rules to be ignored by ruff:
+                  -- D401: imperative docstring.
+                  -- D410: blank line after Returns: in docstring.
+                  -- COM812: trailing comma missing.
+                  -- TD003: missing issue link on the line following this TODO.
+                  ignore = { 'D401', 'D413', 'COM812', 'TD003' },
+                  perFileIgnores = { ['__init__.py'] = { 'F401' } },
+                  preview = false,
+                  targetVersion = 'py39',
+                  unsafeFixes = true,
+                },
+                jedi = {
+                  environment = python_exe,
+                },
+                pylsp_mypy = {
+                  enabled = true,
+                  live_mode = false,
+                  report_progress = false,
+                  config = mypy_config,
+                },
+                pylint = {
+                  enabled = false,
+                },
+                isort = {
+                  enabled = true,
+                },
+              },
+            },
+          },
+        },
 
         lua_ls = {
           -- cmd = { ... },
