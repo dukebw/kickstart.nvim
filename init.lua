@@ -96,6 +96,12 @@ vim.keymap.set('n', ']<Space>', function()
   _blank_line(vim.api.nvim_win_get_cursor(0)[1])
 end, { desc = 'Add empty line below cursor.' })
 
+-- Ensure <C-c> behaves exactly like <Esc>.
+vim.keymap.set('i', '<C-c>', '<Esc><Esc>', {
+  noremap = true, -- Prevent further mappings from being applied.
+  desc = 'Map Ctrl-C to behave exactly like Escape',
+})
+
 -- Execute the lua code under the cursor.
 vim.keymap.set('n', '<leader>x', ':.lua<CR>')
 
@@ -347,10 +353,16 @@ require('lazy').setup({
       local builtin = require 'telescope.builtin'
       vim.keymap.set('n', '<leader>sh', builtin.help_tags, { desc = '[S]earch [H]elp' })
       vim.keymap.set('n', '<leader>sk', builtin.keymaps, { desc = '[S]earch [K]eymaps' })
-      vim.keymap.set('n', '<leader>sf', builtin.find_files, { desc = '[S]earch [F]iles' })
+      vim.keymap.set('n', '<leader>sF', builtin.find_files, { desc = '[S]earch [F]iles' })
+      vim.keymap.set('n', '<leader>sf', function()
+        builtin.find_files { find_command = { 'rg', '--ignore', '--hidden', '--files', '--glob', '!third-party' } }
+      end, { desc = '[S]earch [F]iles. Ignore third-party directory.' })
       vim.keymap.set('n', '<leader>ss', builtin.builtin, { desc = '[S]earch [S]elect Telescope' })
       vim.keymap.set('n', '<leader>sw', builtin.grep_string, { desc = '[S]earch current [W]ord' })
-      vim.keymap.set('n', '<leader>sg', builtin.live_grep, { desc = '[S]earch by [G]rep' })
+      vim.keymap.set('n', '<leader>sG', builtin.live_grep, { desc = '[S]earch by [G]rep' })
+      vim.keymap.set('n', '<leader>sg', function()
+        builtin.live_grep { glob_pattern = '!third-party' }
+      end, { desc = '[S]earch by [G]rep. Ignore third-party directory.' })
       vim.keymap.set('n', '<leader>sd', builtin.diagnostics, { desc = '[S]earch [D]iagnostics' })
       vim.keymap.set('n', '<leader>sr', builtin.resume, { desc = '[S]earch [R]esume' })
       vim.keymap.set('n', '<leader>so', builtin.oldfiles, { desc = '[S]earch Recent Files ("." for repeat)' })
