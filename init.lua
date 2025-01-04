@@ -667,6 +667,21 @@ require('lazy').setup({
         },
       }
 
+      local lspconfig = require 'lspconfig'
+      lspconfig.mlir_lsp_server.setup {
+        cmd = {
+          -- Override mlir-lsp-server default with Modular LSP server.
+          'modular-lsp-server',
+        },
+      }
+
+      lspconfig.tblgen_lsp_server.setup {
+        cmd = {
+          'tblgen-lsp-server',
+          '--tablegen-compilation-database=.derived/tablegen_compile_commands.yml',
+        },
+      }
+
       -- Ensure the servers and tools above are installed
       --  To check the current status of installed tools and/or manually install
       --  other tools, you can run
@@ -693,7 +708,7 @@ require('lazy').setup({
             -- by the server configuration above. Useful when disabling
             -- certain features of an LSP (for example, turning off formatting for ts_ls)
             server.capabilities = vim.tbl_deep_extend('force', {}, capabilities, server.capabilities or {})
-            require('lspconfig')[server_name].setup(server)
+            lspconfig[server_name].setup(server)
           end,
         },
       }
@@ -811,6 +826,10 @@ require('lazy').setup({
       -- Autoinstall languages that are not installed
       auto_install = true,
       highlight = {
+        disable = {
+          -- Disable Treesitter highlighting for MLIR, since the syntax files work better.
+          'mlir',
+        },
         enable = true,
         -- Some languages depend on vim's regex highlighting system (such as Ruby) for indent rules.
         --  If you are experiencing weird indenting issues, add the language to
