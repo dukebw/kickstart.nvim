@@ -667,6 +667,8 @@ require('lazy').setup({
       }
 
       local lspconfig = require 'lspconfig'
+
+      -- Set up LSP servers unsupported by Mason.
       lspconfig.mlir_lsp_server.setup {
         cmd = {
           -- Override mlir-lsp-server default with Modular LSP server.
@@ -679,6 +681,33 @@ require('lazy').setup({
           'tblgen-lsp-server',
           '--tablegen-compilation-database=.derived/tablegen_compile_commands.yml',
         },
+      }
+
+      local util = require 'lspconfig.util'
+
+      local modular_path = os.getenv 'MODULAR_PATH'
+      local max = modular_path .. '/SDK/lib/API/mojo/max'
+      local pipelines = modular_path .. '/SDK/public/max-repo/examples/graph-api'
+      local kernels = modular_path .. '/Kernels/mojo'
+      local kernels_test = modular_path .. '/Kernels/test'
+      local extensibility = modular_path .. '/Kernels/mojo/extensibility'
+      lspconfig.mojo.setup {
+        cmd = {
+          'mojo-lsp-server',
+          '-I',
+          kernels,
+          '-I',
+          max,
+          '-I',
+          pipelines,
+          '-I',
+          kernels_test,
+          '-I',
+          extensibility,
+        },
+        filetypes = { 'mojo' },
+        -- root_dir = util.find_git_ancestor,
+        single_file_support = true,
       }
 
       -- Ensure the servers and tools above are installed
