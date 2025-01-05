@@ -60,6 +60,15 @@ vim.opt.cursorline = true
 -- Minimal number of screen lines to keep above and below the cursor.
 vim.opt.scrolloff = 0
 
+-- Register .cpp.inc and .h.inc as C++ files.
+vim.filetype.add {
+  -- Match by pattern since that takes priority over extension.
+  pattern = {
+    ['.*cpp%.inc'] = 'cpp',
+    ['.*h%.inc'] = 'cpp',
+  },
+}
+
 -- [[ Basic Keymaps ]]
 --  See `:help vim.keymap.set()`
 
