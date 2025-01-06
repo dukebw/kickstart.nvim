@@ -1,1 +1,0 @@
-/home/ubuntu/work/modular/utils/mojo/vim/autoload/mojo.vim
