@@ -694,7 +694,7 @@ require('lazy').setup({
 
       -- local util = require 'lspconfig.util'
 
-      local modular_path = os.getenv 'MODULAR_PATH'
+      local modular_path = os.getenv 'MODULAR_PATH' or vim.fn.expand '~/work/modular'
       local max = modular_path .. '/SDK/lib/API/mojo/max'
       local pipelines = modular_path .. '/SDK/public/max-repo/examples/graph-api'
       local kernels = modular_path .. '/Kernels/mojo'
