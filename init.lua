@@ -692,7 +692,7 @@ require('lazy').setup({
         },
       }
 
-      local util = require 'lspconfig.util'
+      -- local util = require 'lspconfig.util'
 
       local modular_path = os.getenv 'MODULAR_PATH'
       local max = modular_path .. '/SDK/lib/API/mojo/max'

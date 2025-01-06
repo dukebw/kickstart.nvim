@@ -28,42 +28,42 @@ return {
   keys = {
     -- Basic debugging keymaps, feel free to change to your liking!
     {
-      '<F5>',
+      '<leader>ec',
       function()
         require('dap').continue()
       end,
       desc = 'Debug: Start/Continue',
     },
     {
-      '<F1>',
+      '<leader>es',
       function()
         require('dap').step_into()
       end,
       desc = 'Debug: Step Into',
     },
     {
-      '<F2>',
+      '<leader>en',
       function()
         require('dap').step_over()
       end,
       desc = 'Debug: Step Over',
     },
     {
-      '<F3>',
+      '<leader>eS',
       function()
         require('dap').step_out()
       end,
       desc = 'Debug: Step Out',
     },
     {
-      '<leader>b',
+      '<leader>eb',
       function()
         require('dap').toggle_breakpoint()
       end,
       desc = 'Debug: Toggle Breakpoint',
     },
     {
-      '<leader>B',
+      '<leader>eB',
       function()
         require('dap').set_breakpoint(vim.fn.input 'Breakpoint condition: ')
       end,
@@ -71,11 +71,53 @@ return {
     },
     -- Toggle to see last session result. Without this, you can't see session output in case of unhandled exception.
     {
-      '<F7>',
+      '<leader>eg',
       function()
         require('dapui').toggle()
       end,
       desc = 'Debug: See last session result.',
+    },
+    {
+      '<leader>ep',
+      function()
+        require('dap').set_breakpoint(nil, nil, vim.fn.input 'Log point message: ')
+      end,
+      desc = 'Debug: Set Logpoint',
+    },
+    {
+      '<leader>eu',
+      function()
+        require('dap').up()
+      end,
+      desc = 'Debug: Stack Up',
+    },
+    {
+      '<leader>ed',
+      function()
+        require('dap').down()
+      end,
+      desc = 'Debug: Stack Down',
+    },
+    {
+      '<leader>er',
+      function()
+        require('dap').repl.open()
+      end,
+      desc = 'Debug: Open REPL',
+    },
+    {
+      '<leader>el',
+      function()
+        require('dap').run_last()
+      end,
+      desc = 'Debug: Run Last',
+    },
+    {
+      '<leader>et',
+      function()
+        require('dap').terminate()
+      end,
+      desc = 'Debug: Terminate',
     },
   },
   config = function()
@@ -122,16 +164,16 @@ return {
     }
 
     -- Change breakpoint icons
-    -- vim.api.nvim_set_hl(0, 'DapBreak', { fg = '#e51400' })
-    -- vim.api.nvim_set_hl(0, 'DapStop', { fg = '#ffcc00' })
-    -- local breakpoint_icons = vim.g.have_nerd_font
-    --     and { Breakpoint = '', BreakpointCondition = '', BreakpointRejected = '', LogPoint = '', Stopped = '' }
-    --   or { Breakpoint = '●', BreakpointCondition = '⊜', BreakpointRejected = '⊘', LogPoint = '◆', Stopped = '⭔' }
-    -- for type, icon in pairs(breakpoint_icons) do
-    --   local tp = 'Dap' .. type
-    --   local hl = (type == 'Stopped') and 'DapStop' or 'DapBreak'
-    --   vim.fn.sign_define(tp, { text = icon, texthl = hl, numhl = hl })
-    -- end
+    vim.api.nvim_set_hl(0, 'DapBreak', { fg = '#e51400' })
+    vim.api.nvim_set_hl(0, 'DapStop', { fg = '#ffcc00' })
+    local breakpoint_icons = vim.g.have_nerd_font
+        and { Breakpoint = '', BreakpointCondition = '', BreakpointRejected = '', LogPoint = '', Stopped = '' }
+      or { Breakpoint = '●', BreakpointCondition = '⊜', BreakpointRejected = '⊘', LogPoint = '◆', Stopped = '⭔' }
+    for type, icon in pairs(breakpoint_icons) do
+      local tp = 'Dap' .. type
+      local hl = (type == 'Stopped') and 'DapStop' or 'DapBreak'
+      vim.fn.sign_define(tp, { text = icon, texthl = hl, numhl = hl })
+    end
 
     dap.listeners.after.event_initialized['dapui_config'] = dapui.open
     dap.listeners.before.event_terminated['dapui_config'] = dapui.close
@@ -150,5 +192,91 @@ return {
     local dap_python = require 'dap-python'
     dap_python.setup()
     dap_python.test_runner = 'pytest'
+
+    -- Configure nvim-dap for C++.
+    dap.adapters.lldb = {
+      type = 'executable',
+      command = '/usr/bin/lldb-dap', -- must be absolute path
+      name = 'lldb',
+    }
+
+    local function read_config()
+      local config_path = vim.fn.getcwd() .. '/.nvim-dap.json'
+      print('config_path: ' .. config_path)
+      local ok, content = pcall(vim.fn.readfile, config_path)
+      if not ok then
+        vim.notify('Config file not found: ' .. config_path, vim.log.levels.WARN)
+        return nil
+      end
+
+      local ok2, config = pcall(vim.json.decode, table.concat(content, '\n'))
+      if not ok2 then
+        vim.notify('Error parsing JSON config', vim.log.levels.ERROR)
+        return nil
+      end
+      return config
+    end
+
+    local function get_config_or_prompt(key, prompt, default)
+      local config = read_config()
+      print 'config: '
+      print(config)
+      if config and config[key] then
+        return config[key]
+      end
+
+      return function()
+        return vim.ui.input({
+          prompt = prompt,
+          default = default or '',
+        }, function(input)
+          return input
+        end)
+      end
+    end
+
+    dap.configurations.cpp = {
+      {
+        name = 'Launch',
+        type = 'lldb',
+        request = 'launch',
+        program = get_config_or_prompt('program', 'Path to executable: ', vim.fn.getcwd() .. '/'),
+        cwd = '${workspaceFolder}',
+        stopOnEntry = false,
+        args = function()
+          local config = read_config()
+          if config and config.cpp_args then
+            return config.cpp_args
+          end
+
+          return vim.ui.input({
+            prompt = 'Args: ',
+          }, function(input)
+            return input and vim.split(input, ' ') or {}
+          end)
+        end,
+        env = function()
+          local config = read_config()
+          return vim.tbl_deep_extend('force', {}, config and config.env or {})
+        end,
+        initCommands = function()
+          local config = read_config()
+          if not config or not config.env then
+            return {}
+          end
+
+          return vim.tbl_map(function(k)
+            return string.format('settings set target.env-vars %s="%s"', k, config.env[k])
+          end, vim.tbl_keys(config.env))
+        end,
+      },
+      {
+        name = 'Attach to Process',
+        type = 'lldb',
+        request = 'attach',
+        pid = require('dap.utils').pick_process,
+        cwd = '${workspaceFolder}',
+      },
+    }
   end,
 }
