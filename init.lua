@@ -692,8 +692,6 @@ require('lazy').setup({
         },
       }
 
-      -- local util = require 'lspconfig.util'
-
       local modular_path = os.getenv 'MODULAR_PATH' or vim.fn.expand '~/work/modular'
       local max = modular_path .. '/SDK/lib/API/mojo/max'
       local pipelines = modular_path .. '/SDK/public/max-repo/examples/graph-api'
@@ -715,9 +713,64 @@ require('lazy').setup({
           extensibility,
         },
         filetypes = { 'mojo' },
-        -- root_dir = util.find_git_ancestor,
+        -- Find project root by looking for .git, fallback to file directory.
+        root_dir = function(fname)
+          local git_dir = vim.fs.find('.git', { upward = true, path = fname })[1]
+          return git_dir and vim.fs.dirname(git_dir) or vim.fs.dirname(fname)
+        end,
         single_file_support = true,
       }
+
+      -- Configure bazel and bazelrc LSPs.
+      local bazel_lsp = '/home/ubuntu/work/bazel-lsp/bazel-bin/bazel-lsp'
+      local bazelrc_lsp = '/home/ubuntu/work/bazelrc-lsp/vscode-extension/dist/bazelrc-lsp'
+
+      lspconfig.bzl.setup {
+        cmd = {
+          bazel_lsp,
+        },
+        filetypes = { 'bzl' },
+        -- Find project root by looking for .git, fallback to file directory.
+        root_dir = function(fname)
+          local git_dir = vim.fs.find('.git', { upward = true, path = fname })[1]
+          return git_dir and vim.fs.dirname(git_dir) or vim.fs.dirname(fname)
+        end,
+        single_file_support = true,
+      }
+
+      vim.filetype.add {
+        pattern = {
+          ['.*.bazelrc'] = 'bazelrc',
+        },
+      }
+
+      lspconfig.bazelrc_lsp.setup {
+        cmd = {
+          bazelrc_lsp,
+        },
+        filetypes = { 'bazelrc' },
+      }
+
+      vim.api.nvim_create_autocmd('BufWritePre', {
+        pattern = { '*.cpp', '*.hpp', '*.c', '*.h', '.cc', '.hh', '.cxx', '.hxx', '*.py', '*.sh', 'BUILD', 'WORKSPACE', '*.bazel', '*.bzl' },
+        callback = function()
+          vim.lsp.buf.format { async = false }
+        end,
+      })
+
+      vim.api.nvim_create_autocmd('BufWritePost', {
+        pattern = { '*.mojo', '*.🔥' },
+        callback = function()
+          -- Save the current cursor position.
+          local cursor_pos = vim.api.nvim_win_get_cursor(0)
+          -- Get the current buffer's file name.
+          local file = vim.fn.expand '%:p'
+          -- Run mblack on the file.
+          vim.cmd('silent! !mblack ' .. file)
+          -- Restore the cursor position.
+          vim.api.nvim_win_set_cursor(0, cursor_pos)
+        end,
+      })
 
       -- Ensure the servers and tools above are installed
       --  To check the current status of installed tools and/or manually install
