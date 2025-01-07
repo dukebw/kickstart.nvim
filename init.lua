@@ -361,6 +361,15 @@ require('lazy').setup({
             require('telescope.themes').get_dropdown(),
           },
         },
+        pickers = {
+          defaults = { file_ignore_patterns = { '.git/' } },
+          live_grep = {
+            additional_args = function()
+              return { '--hidden' }
+            end,
+            find_files = { hidden = true },
+          },
+        },
       }
 
       -- Enable Telescope extensions if they are installed.
