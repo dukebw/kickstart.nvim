@@ -200,7 +200,6 @@ return {
 
     local function read_config()
       local config_path = vim.fn.getcwd() .. '/.nvim-dap.json'
-      print('config_path: ' .. config_path)
       local ok, content = pcall(vim.fn.readfile, config_path)
       if not ok then
         vim.notify('Config file not found: ' .. config_path, vim.log.levels.WARN)
@@ -217,8 +216,6 @@ return {
 
     local function get_config_or_prompt(key, prompt, default)
       local config = read_config()
-      print 'config: '
-      print(config)
       if config and config[key] then
         return config[key]
       end
