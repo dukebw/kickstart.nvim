@@ -290,13 +290,13 @@ require('lazy').setup({
         --   },
         -- },
         -- pickers = {}
+        defaults = { file_ignore_patterns = { '.git/' } },
         extensions = {
           ['ui-select'] = {
             require('telescope.themes').get_dropdown(),
           },
         },
         pickers = {
-          defaults = { file_ignore_patterns = { '.git/' } },
           live_grep = {
             additional_args = function()
               return { '--hidden' }
