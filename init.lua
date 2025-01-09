@@ -133,6 +133,10 @@ vim.keymap.set('n', '<C-n>', '<cmd>nohlsearch<CR>')
 -- Diagnostic keymaps.
 vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
 
+vim.keymap.set('n', '<leader>of', function()
+  vim.diagnostic.open_float()
+end, { silent = true, desc = 'Show diagnostics in a floating window.' })
+
 -- Exit terminal mode in the builtin terminal with a shortcut that is a bit easier
 -- for people to discover. Otherwise, you normally need to press <C-\><C-n>, which
 -- is not what someone will guess without a bit more experience.
