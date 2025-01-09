@@ -14,6 +14,9 @@ return {
     -- Creates a beautiful debugger UI.
     'rcarriga/nvim-dap-ui',
 
+    -- Virtual text for debugging.
+    { 'theHamsta/nvim-dap-virtual-text', {} },
+
     -- Required dependency for nvim-dap-ui.
     'nvim-neotest/nvim-nio',
 
@@ -33,6 +36,13 @@ return {
         require('dap').continue()
       end,
       desc = 'Debug: Start/Continue',
+    },
+    {
+      '<leader>eC',
+      function()
+        require('dap-python').test_method { config = { justMyCode = false } }
+      end,
+      desc = 'Debug: Test Method (Python)',
     },
     {
       '<leader>es',
@@ -190,6 +200,11 @@ return {
     local dap_python = require 'dap-python'
     dap_python.setup()
     dap_python.test_runner = 'pytest'
+
+    -- Always allow debugging third-party code.
+    for _, config in ipairs(dap.configurations.python) do
+      config.justMyCode = false
+    end
 
     -- Configure nvim-dap for C++.
     dap.adapters.lldb = {
