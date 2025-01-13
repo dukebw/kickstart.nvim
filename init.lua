@@ -57,6 +57,9 @@ vim.opt.inccommand = 'split'
 -- Show which line your cursor is on.
 vim.opt.cursorline = true
 
+-- Show which column your cursor is on.
+vim.opt.cursorcolumn = true
+
 -- Minimal number of screen lines to keep above and below the cursor.
 vim.opt.scrolloff = 0
 
@@ -66,6 +69,7 @@ vim.filetype.add {
   pattern = {
     ['.*cpp%.inc'] = 'cpp',
     ['.*h%.inc'] = 'cpp',
+    ['.*%.mdx'] = 'markdown',
   },
 }
 
@@ -172,6 +176,15 @@ vim.api.nvim_create_autocmd('TextYankPost', {
   callback = function()
     vim.highlight.on_yank()
   end,
+})
+
+-- Set textwidth for Python files.
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = 'python',
+  callback = function()
+    vim.opt_local.textwidth = 80
+  end,
+  desc = 'Sets textwidth for Python files.',
 })
 
 -- [[ Install `lazy.nvim` plugin manager ]]

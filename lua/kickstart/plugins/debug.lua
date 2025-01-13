@@ -15,7 +15,7 @@ return {
     'rcarriga/nvim-dap-ui',
 
     -- Virtual text for debugging.
-    { 'theHamsta/nvim-dap-virtual-text', {} },
+    'theHamsta/nvim-dap-virtual-text',
 
     -- Required dependency for nvim-dap-ui.
     'nvim-neotest/nvim-nio',
@@ -172,6 +172,9 @@ return {
         },
       },
     }
+
+    -- Set up virtual text for the DAP UI.
+    require('nvim-dap-virtual-text').setup()
 
     -- Change breakpoint icons
     vim.api.nvim_set_hl(0, 'DapBreak', { fg = '#e51400' })
