@@ -70,6 +70,12 @@ vim.filetype.add {
     ['.*cpp%.inc'] = 'cpp',
     ['.*h%.inc'] = 'cpp',
     ['.*%.mdx'] = 'markdown',
+    ['.*%.ptx'] = 'ptx',
+    ['.*%.bazelrc'] = 'bazelrc',
+    ['.*%.bazel'] = 'bzl',
+    ['.*%.bzl'] = 'bzl',
+    ['WORKSPACE'] = 'bzl',
+    ['BUILD'] = 'bzl',
   },
 }
 
@@ -298,7 +304,9 @@ require('lazy').setup({
         --   },
         -- },
         -- pickers = {}
-        defaults = { file_ignore_patterns = { '.git/' } },
+        defaults = {
+          file_ignore_patterns = { '.git/' },
+        },
         extensions = {
           ['ui-select'] = {
             require('telescope.themes').get_dropdown(),
@@ -689,12 +697,6 @@ require('lazy').setup({
         single_file_support = true,
       }
 
-      vim.filetype.add {
-        pattern = {
-          ['.*.bazelrc'] = 'bazelrc',
-        },
-      }
-
       lspconfig.bazelrc_lsp.setup {
         cmd = {
           bazelrc_lsp,
@@ -790,11 +792,19 @@ require('lazy').setup({
       end,
       formatters_by_ft = {
         lua = { 'stylua' },
+        bzl = { 'bazel' },
         -- Conform can also run multiple formatters sequentially
         -- python = { "isort", "black" },
         --
         -- You can use 'stop_after_first' to run the first available formatter from the list
         -- javascript = { "prettierd", "prettier", stop_after_first = true },
+      },
+      formatters = {
+        bazel = {
+          command = os.getenv 'MODULAR_DERIVED_PATH' .. '/build-bazel/bin/buildifier',
+          args = { '-type=build' },
+          stdin = true,
+        },
       },
     },
   },
