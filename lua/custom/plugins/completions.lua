@@ -4,9 +4,8 @@ return {
   dependencies = 'rafamadriz/friendly-snippets',
   version = '*',
   opts = {
-    keymap = {
-      preset = 'default',
-      cmdline = {
+    cmdline = {
+      keymap = {
         -- Disable defaults in command-line mode, since binding <Tab> and
         -- <S-Tab> breaks %:p:h expansion.
         preset = 'none',
@@ -20,6 +19,9 @@ return {
         ['<C-b>'] = { 'scroll_documentation_up', 'fallback' },
         ['<C-f>'] = { 'scroll_documentation_down', 'fallback' },
       },
+    },
+    keymap = {
+      preset = 'default',
     },
     appearance = {
       use_nvim_cmp_as_default = true,
