@@ -655,6 +655,7 @@ require('lazy').setup({
       local kernels = modular_path .. '/Kernels/mojo'
       local extensibility = modular_path .. '/Kernels/mojo/extensibility'
       local kernels_test = modular_path .. '/Kernels/test'
+      local stdlib = modular_path .. '/open-source/max/mojo/stdlib'
       lspconfig.mojo.setup {
         cmd = {
           'mojo-lsp-server',
@@ -664,6 +665,8 @@ require('lazy').setup({
           kernels_test,
           '-I',
           extensibility,
+          '-I',
+          stdlib,
         },
         filetypes = { 'mojo' },
         -- Find project root by looking for .git, fallback to file directory.
