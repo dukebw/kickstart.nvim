@@ -73,6 +73,7 @@ vim.filetype.add {
     ['.*%.ptx'] = 'ptx',
     ['.*%.bazelrc'] = 'bazelrc',
     ['.*%.bazel'] = 'bzl',
+    ['.*%.BUILD'] = 'bzl',
     ['.*%.bzl'] = 'bzl',
     ['WORKSPACE'] = 'bzl',
     ['BUILD'] = 'bzl',
@@ -332,14 +333,14 @@ require('lazy').setup({
       vim.keymap.set('n', '<leader>sk', builtin.keymaps, { desc = '[S]earch [K]eymaps' })
       vim.keymap.set('n', '<leader>sF', builtin.find_files, { desc = '[S]earch [F]iles' })
       vim.keymap.set('n', '<leader>sf', function()
-        builtin.find_files { find_command = { 'rg', '--ignore', '--hidden', '--files', '--glob', '!third-party' } }
-      end, { desc = '[S]earch [F]iles. Ignore third-party directory.' })
+        builtin.find_files { find_command = { 'rg', '--ignore', '--hidden', '--files' } }
+      end, { desc = '[S]earch [F]iles.' })
       vim.keymap.set('n', '<leader>ss', builtin.builtin, { desc = '[S]earch [S]elect Telescope' })
       vim.keymap.set('n', '<leader>sw', builtin.grep_string, { desc = '[S]earch current [W]ord' })
       vim.keymap.set('n', '<leader>sG', builtin.live_grep, { desc = '[S]earch by [G]rep' })
       vim.keymap.set('n', '<leader>sg', function()
-        builtin.live_grep { glob_pattern = '!third-party' }
-      end, { desc = '[S]earch by [G]rep. Ignore third-party directory.' })
+        builtin.live_grep {}
+      end, { desc = '[S]earch by [G]rep.' })
       vim.keymap.set('n', '<leader>sx', function()
         vim.ui.input({ prompt = 'Enter glob pattern: ' }, function(pattern)
           if pattern then
@@ -653,20 +654,23 @@ require('lazy').setup({
 
       local modular_path = os.getenv 'MODULAR_PATH' or vim.fn.expand '~/work/modular'
       local kernels = modular_path .. '/Kernels/mojo'
-      local extensibility = modular_path .. '/Kernels/mojo/extensibility'
+      local oss_kernels = modular_path .. '/open-source/max/max/kernels/src'
       local kernels_test = modular_path .. '/Kernels/test'
       local stdlib = modular_path .. '/open-source/max/mojo/stdlib'
+      local extensibility = modular_path .. '/open-source/max/max/kernels/src/extensibility'
       lspconfig.mojo.setup {
         cmd = {
           'mojo-lsp-server',
           '-I',
           kernels,
           '-I',
+          oss_kernels,
+          '-I',
           kernels_test,
           '-I',
-          extensibility,
-          '-I',
           stdlib,
+          '-I',
+          extensibility,
         },
         filetypes = { 'mojo' },
         -- Find project root by looking for .git, fallback to file directory.
@@ -678,21 +682,7 @@ require('lazy').setup({
       }
 
       -- Configure bazel and bazelrc LSPs.
-      local bazel_lsp = '/home/ubuntu/work/bazel-lsp/bazel-bin/bazel-lsp'
       local bazelrc_lsp = '/home/ubuntu/work/bazelrc-lsp/vscode-extension/dist/bazelrc-lsp'
-
-      lspconfig.bzl.setup {
-        cmd = {
-          bazel_lsp,
-        },
-        filetypes = { 'bzl' },
-        -- Find project root by looking for .git, fallback to file directory.
-        root_dir = function(fname)
-          local git_dir = vim.fs.find('.git', { upward = true, path = fname })[1]
-          return git_dir and vim.fs.dirname(git_dir) or vim.fs.dirname(fname)
-        end,
-        single_file_support = true,
-      }
 
       lspconfig.bazelrc_lsp.setup {
         cmd = {
