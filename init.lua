@@ -529,15 +529,18 @@ require('lazy').setup({
         end,
       })
 
-      -- Change diagnostic symbols in the sign column (gutter)
-      -- if vim.g.have_nerd_font then
-      --   local signs = { ERROR = '', WARN = '', INFO = '', HINT = '' }
-      --   local diagnostic_signs = {}
-      --   for type, icon in pairs(signs) do
-      --     diagnostic_signs[vim.diagnostic.severity[type]] = icon
-      --   end
-      --   vim.diagnostic.config { signs = { text = diagnostic_signs } }
-      -- end
+      -- Enable virtual text for diagnostics.
+      vim.diagnostic.config {
+        virtual_text = {
+          spacing = 2, -- distance from the text
+          prefix = '●', -- or ">>", "", "󰅚" … any string/func
+          source = 'if_many', -- show source name only if >1 LSP
+        },
+        signs = true, -- keep the gutter icons you already see
+        underline = true,
+        update_in_insert = false, -- don’t spam while you type
+        severity_sort = true, -- error → warning → hint
+      }
 
       -- LSP servers and clients are able to communicate to each other what features they support.
       --  By default, Neovim doesn't support everything that is in the LSP specification.
@@ -738,7 +741,7 @@ require('lazy').setup({
 
       require('mason-lspconfig').setup {
         ensure_installed = {},
-        automatic_installation = false,
+        automatic_enable = false,
         handlers = {
           function(server_name)
             local server = servers[server_name] or {}
