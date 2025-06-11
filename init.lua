@@ -741,7 +741,7 @@ require('lazy').setup({
 
       require('mason-lspconfig').setup {
         ensure_installed = {},
-        automatic_enable = false,
+        automatic_enable = true,
         handlers = {
           function(server_name)
             local server = servers[server_name] or {}
