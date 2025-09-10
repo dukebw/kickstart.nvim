@@ -67,10 +67,11 @@ vim.opt.scrolloff = 0
 vim.filetype.add {
   -- Match by pattern since that takes priority over extension.
   pattern = {
+    ['.*%.sass'] = 'asm',
+    ['.*%.ptx'] = 'asm',
     ['.*cpp%.inc'] = 'cpp',
     ['.*h%.inc'] = 'cpp',
     ['.*%.mdx'] = 'markdown',
-    ['.*%.ptx'] = 'ptx',
     ['.*%.bazelrc'] = 'bazelrc',
     ['.*%.bazel'] = 'bzl',
     ['.*%.BUILD'] = 'bzl',
