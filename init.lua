@@ -376,6 +376,120 @@ require('lazy').setup({
       vim.keymap.set('n', '<leader>sn', function()
         builtin.find_files { cwd = vim.fn.stdpath 'config' }
       end, { desc = '[S]earch [N]eovim files' })
+
+      -- Upstream MLIR Telescope helpers
+      do
+        local function _join(...)
+          return (table.concat({ ... }, '/'):gsub('//+', '/'))
+        end
+
+        local function _read_first_line(p)
+          local f = io.open(p, 'r')
+          if not f then
+            return nil
+          end
+          local line = f:read '*l'
+          f:close()
+          if line then
+            return (vim.trim(line))
+          end
+          return nil
+        end
+
+        local function _is_dir(p)
+          return p and vim.fn.isdirectory(p) == 1
+        end
+
+        local function modular_repo_root()
+          local from_env = os.getenv 'MODULAR_PATH'
+          if _is_dir(from_env) then
+            return from_env
+          end
+          local marker = vim.fs.find('bazel/third-party/llvm.MODULE.bazel', { upward = true, path = vim.loop.cwd() })[1]
+          if marker then
+            return vim.fs.dirname(vim.fs.dirname(vim.fs.dirname(marker)))
+          end
+          return nil
+        end
+
+        local function llvm_commit(repo_root)
+          local m = _join(repo_root, 'bazel/third-party/llvm.MODULE.bazel')
+          local f = io.open(m, 'r')
+          if not f then
+            return nil
+          end
+          local s = f:read '*a'
+          f:close()
+          if not s then
+            return nil
+          end
+          return s:match 'LLVM_COMMIT%s*=%s*"([0-9a-f]+)"'
+        end
+
+        local function mlir_root()
+          local root = modular_repo_root()
+          if not root then
+            return nil, nil
+          end
+
+          -- 1) explicit override
+          local override_file = _join(root, '.derived/bazel/llvm-override.txt')
+          local override = _read_first_line(override_file)
+          if _is_dir(override) and _is_dir(_join(override, 'mlir')) then
+            return _join(override, 'mlir'), root
+          end
+
+          -- 2) symlink created by utils/llvm-init.sh
+          local symlink_mlir = _join(root, 'third-party/llvm/mlir')
+          if _is_dir(symlink_mlir) then
+            return symlink_mlir, root
+          end
+
+          -- 3) Bazel external
+          local bazel_mlir = _join(root, 'external/+llvm_configure+llvm-project/mlir')
+          if _is_dir(bazel_mlir) then
+            return bazel_mlir, root
+          end
+
+          return nil, root
+        end
+
+        -- Files under upstream MLIR
+        vim.keymap.set('n', '<leader>mf', function()
+          local mlir, repo = mlir_root()
+          if not mlir then
+            vim.notify('MLIR root not found. Run utils/llvm-init.sh once or build to materialize Bazel external.', vim.log.levels.WARN)
+            return
+          end
+          local sha = repo and llvm_commit(repo)
+          local title = 'MLIR files' .. (sha and (' (llvm ' .. string.sub(sha, 1, 12) .. ')') or '')
+          require('telescope.builtin').find_files {
+            cwd = mlir,
+            prompt_title = title,
+            -- Follow symlinks since Bazel external uses many.
+            find_command = { 'rg', '-L', '--ignore', '--hidden', '--files' },
+          }
+        end, { desc = '[M]LIR [F]iles (upstream)' })
+
+        -- Grep under upstream MLIR
+        vim.keymap.set('n', '<leader>mg', function()
+          local mlir, repo = mlir_root()
+          if not mlir then
+            vim.notify('MLIR root not found. Run utils/llvm-init.sh once or build to materialize Bazel external.', vim.log.levels.WARN)
+            return
+          end
+          local sha = repo and llvm_commit(repo)
+          local title = 'MLIR grep' .. (sha and (' (llvm ' .. string.sub(sha, 1, 12) .. ')') or '')
+          require('telescope.builtin').live_grep {
+            cwd = mlir,
+            prompt_title = title,
+            additional_args = function()
+              -- Follow symlinks in Bazel external.
+              return { '--hidden', '-L' }
+            end,
+          }
+        end, { desc = '[M]LIR [G]rep (upstream)' })
+      end
     end,
   },
 
@@ -495,7 +609,7 @@ require('lazy').setup({
           --
           -- When you move your cursor, the highlights will be cleared (the second autocommand).
           local client = vim.lsp.get_client_by_id(event.data.client_id)
-          if client and client.supports_method(vim.lsp.protocol.Methods.textDocument_documentHighlight) then
+          if client and client:supports_method(vim.lsp.protocol.Methods.textDocument_documentHighlight) then
             local highlight_augroup = vim.api.nvim_create_augroup('kickstart-lsp-highlight', { clear = false })
             vim.api.nvim_create_autocmd({ 'CursorHold', 'CursorHoldI' }, {
               buffer = event.buf,
@@ -522,7 +636,7 @@ require('lazy').setup({
           -- code, if the language server you are using supports them.
           --
           -- This may be unwanted, since they displace some of your code.
-          if client and client.supports_method(vim.lsp.protocol.Methods.textDocument_inlayHint) then
+          if client and client:supports_method(vim.lsp.protocol.Methods.textDocument_inlayHint) then
             map('<leader>th', function()
               vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled { bufnr = event.buf })
             end, '[T]oggle Inlay [H]ints')
@@ -550,6 +664,11 @@ require('lazy').setup({
       local capabilities = vim.lsp.protocol.make_client_capabilities()
       capabilities = vim.tbl_deep_extend('force', capabilities, require('blink.cmp').get_lsp_capabilities())
 
+      -- Apply to all servers by default.
+      vim.lsp.config('*', {
+        capabilities = capabilities,
+      })
+
       -- Enable the following language servers
       --  Feel free to add/remove any LSPs that you want here. They will automatically be installed.
       --
@@ -567,7 +686,7 @@ require('lazy').setup({
       local ruff_exe = pylsp_venv_path .. '/bin/ruff'
       local mypy_config = vim.env.PYLSP_MYPY_CONFIG or vim.fn.expand '~/.config/mypy/mypy.ini'
 
-      local servers = {
+      local mason_servers = {
         clangd = {},
         -- gopls = {},
         -- pyright = {},
@@ -579,51 +698,6 @@ require('lazy').setup({
         --
         -- But for many setups, the LSP (`ts_ls`) will work just fine
         -- ts_ls = {},
-        pylsp = {
-          cmd = { python_exe, '-m', 'pylsp' },
-          settings = {
-            pylsp = {
-              plugins = {
-                autopep8 = { enabled = false },
-                ruff = {
-                  enabled = true,
-                  formatEnabled = true,
-                  executable = ruff_exe,
-                  extendSelect = { 'I' },
-                  format = { 'I' },
-                  lineLength = 88,
-                  select = { 'ALL' },
-                  -- Rules to be ignored by ruff:
-                  -- D401: imperative docstring.
-                  -- D410: blank line after Returns: in docstring.
-                  -- COM812: trailing comma missing.
-                  -- TD003: missing issue link on the line following this TODO.
-                  ignore = { 'D401', 'D413', 'COM812', 'TD003' },
-                  perFileIgnores = { ['__init__.py'] = { 'F401' } },
-                  preview = false,
-                  targetVersion = 'py39',
-                  unsafeFixes = true,
-                },
-                jedi = {
-                  environment = python_exe,
-                },
-                pylsp_mypy = {
-                  enabled = true,
-                  live_mode = false,
-                  report_progress = false,
-                  config = mypy_config,
-                },
-                pylint = {
-                  enabled = false,
-                },
-                isort = {
-                  enabled = true,
-                },
-              },
-            },
-          },
-        },
-
         lua_ls = {
           -- cmd = { ... },
           -- filetypes = { ... },
@@ -640,27 +714,76 @@ require('lazy').setup({
         },
       }
 
-      local lspconfig = require 'lspconfig'
+      for server_name, server_opts in pairs(mason_servers) do
+        vim.lsp.config(server_name, server_opts)
+      end
 
       -- Set up pylsp manually: it is not managed by Mason because we want to
       -- use the aspect_rules_py MAX venv.
-      local pylsp_cfg = servers.pylsp
-      lspconfig.pylsp.setup(pylsp_cfg)
+      local pylsp_cfg = {
+        cmd = { python_exe, '-m', 'pylsp' },
+        settings = {
+          pylsp = {
+            plugins = {
+              autopep8 = { enabled = false },
+              ruff = {
+                enabled = true,
+                formatEnabled = true,
+                executable = ruff_exe,
+                extendSelect = { 'I' },
+                format = { 'I' },
+                lineLength = 88,
+                select = { 'ALL' },
+                -- Rules to be ignored by ruff:
+                -- D401: imperative docstring.
+                -- D410: blank line after Returns: in docstring.
+                -- COM812: trailing comma missing.
+                -- TD003: missing issue link on the line following this TODO.
+                ignore = { 'D401', 'D413', 'COM812', 'TD003' },
+                perFileIgnores = { ['__init__.py'] = { 'F401' } },
+                preview = false,
+                targetVersion = 'py39',
+                unsafeFixes = true,
+              },
+              jedi = {
+                environment = python_exe,
+              },
+              pylsp_mypy = {
+                enabled = true,
+                live_mode = false,
+                report_progress = false,
+                config = mypy_config,
+              },
+              pylint = {
+                enabled = false,
+              },
+              isort = {
+                enabled = true,
+              },
+            },
+          },
+        },
+      }
+
+      vim.lsp.config('pylsp', pylsp_cfg)
+      vim.lsp.enable('pylsp')
 
       -- Set up LSP servers unsupported by Mason.
-      lspconfig.mlir_lsp_server.setup {
+      vim.lsp.config('mlir_lsp_server', {
         cmd = {
           -- Override mlir-lsp-server default with Modular LSP server.
           'modular-lsp-server',
         },
-      }
+      })
+      vim.lsp.enable('mlir_lsp_server')
 
-      lspconfig.tblgen_lsp_server.setup {
+      vim.lsp.config('tblgen_lsp_server', {
         cmd = {
           'tblgen-lsp-server',
           '--tablegen-compilation-database=.derived/tablegen_compile_commands.yml',
         },
-      }
+      })
+      vim.lsp.enable('tblgen_lsp_server')
 
       local modular_path = os.getenv 'MODULAR_PATH' or vim.fn.expand '~/work/modular'
       local kernels = modular_path .. '/Kernels/mojo'
@@ -668,7 +791,7 @@ require('lazy').setup({
       local kernels_test = modular_path .. '/Kernels/test'
       local stdlib = modular_path .. '/open-source/max/mojo/stdlib'
       local extensibility = modular_path .. '/open-source/max/max/kernels/src/extensibility'
-      lspconfig.mojo.setup {
+      vim.lsp.config('mojo', {
         cmd = {
           'mojo-lsp-server',
           '-I',
@@ -683,23 +806,21 @@ require('lazy').setup({
           extensibility,
         },
         filetypes = { 'mojo' },
-        -- Find project root by looking for .git, fallback to file directory.
-        root_dir = function(fname)
-          local git_dir = vim.fs.find('.git', { upward = true, path = fname })[1]
-          return git_dir and vim.fs.dirname(git_dir) or vim.fs.dirname(fname)
-        end,
+        root_markers = { '.git' },
         single_file_support = true,
-      }
+      })
+      vim.lsp.enable('mojo')
 
       -- Configure bazel and bazelrc LSPs.
       local bazelrc_lsp = '/home/ubuntu/work/bazelrc-lsp/vscode-extension/dist/bazelrc-lsp'
 
-      lspconfig.bazelrc_lsp.setup {
+      vim.lsp.config('bazelrc_lsp', {
         cmd = {
           bazelrc_lsp,
         },
         filetypes = { 'bazelrc' },
-      }
+      })
+      vim.lsp.enable('bazelrc_lsp')
 
       vim.api.nvim_create_autocmd('BufWritePre', {
         pattern = { '*.cpp', '*.hpp', '*.c', '*.h', '.cc', '.hh', '.cxx', '.hxx', '*.sh', 'BUILD', 'WORKSPACE', '*.bazel', '*.bzl' },
@@ -732,9 +853,7 @@ require('lazy').setup({
 
       -- You can add other tools here that you want Mason to install
       -- for you, so that they are available from within Neovim.
-      local ensure_installed = vim.tbl_filter(function(name)
-        return name ~= 'pylsp'
-      end, vim.tbl_keys(servers or {}))
+      local ensure_installed = vim.tbl_keys(mason_servers)
       vim.list_extend(ensure_installed, {
         'stylua', -- Used to format Lua code
       })
@@ -743,16 +862,6 @@ require('lazy').setup({
       require('mason-lspconfig').setup {
         ensure_installed = {},
         automatic_enable = true,
-        handlers = {
-          function(server_name)
-            local server = servers[server_name] or {}
-            -- This handles overriding only values explicitly passed
-            -- by the server configuration above. Useful when disabling
-            -- certain features of an LSP (for example, turning off formatting for ts_ls)
-            server.capabilities = vim.tbl_deep_extend('force', {}, capabilities, server.capabilities or {})
-            lspconfig[server_name].setup(server)
-          end,
-        },
       }
     end,
   },
