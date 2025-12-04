@@ -910,7 +910,7 @@ require('lazy').setup({
       },
       formatters = {
         bazel = {
-          command = os.getenv 'MODULAR_DERIVED_PATH' .. '/build-bazel/bin/buildifier',
+          command = (os.getenv 'MODULAR_DERIVED_PATH' or '') .. '/build-bazel/bin/buildifier',
           args = { '-type=build' },
           stdin = true,
         },
