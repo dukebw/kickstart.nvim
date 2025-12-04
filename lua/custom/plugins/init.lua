@@ -5,6 +5,5 @@
 return {
   require 'custom.plugins.completions',
   require 'custom.plugins.git',
-  require 'custom.plugins.llm',
   require 'custom.plugins.oil',
 }
