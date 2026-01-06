@@ -684,7 +684,6 @@ require('lazy').setup({
       local pylsp_venv_path = vim.env.PYLSP_VENV_PATH or vim.fn.expand '~/.venv'
       local python_exe = pylsp_venv_path .. '/bin/python'
       local ruff_exe = pylsp_venv_path .. '/bin/ruff'
-      local mypy_config = vim.env.PYLSP_MYPY_CONFIG or vim.fn.expand '~/.config/mypy/mypy.ini'
 
       local mason_servers = {
         clangd = {},
@@ -752,7 +751,6 @@ require('lazy').setup({
                 enabled = true,
                 live_mode = false,
                 report_progress = false,
-                config = mypy_config,
               },
               pylint = {
                 enabled = false,
@@ -766,7 +764,7 @@ require('lazy').setup({
       }
 
       vim.lsp.config('pylsp', pylsp_cfg)
-      vim.lsp.enable('pylsp')
+      vim.lsp.enable 'pylsp'
 
       -- Set up LSP servers unsupported by Mason.
       vim.lsp.config('mlir_lsp_server', {
@@ -775,7 +773,7 @@ require('lazy').setup({
           'modular-lsp-server',
         },
       })
-      vim.lsp.enable('mlir_lsp_server')
+      vim.lsp.enable 'mlir_lsp_server'
 
       vim.lsp.config('tblgen_lsp_server', {
         cmd = {
@@ -783,7 +781,7 @@ require('lazy').setup({
           '--tablegen-compilation-database=.derived/tablegen_compile_commands.yml',
         },
       })
-      vim.lsp.enable('tblgen_lsp_server')
+      vim.lsp.enable 'tblgen_lsp_server'
 
       local modular_path = os.getenv 'MODULAR_PATH' or vim.fn.expand '~/work/modular'
       local kernels = modular_path .. '/Kernels/mojo'
@@ -809,7 +807,7 @@ require('lazy').setup({
         root_markers = { '.git' },
         single_file_support = true,
       })
-      vim.lsp.enable('mojo')
+      vim.lsp.enable 'mojo'
 
       -- Configure bazel and bazelrc LSPs.
       local bazelrc_lsp = '/home/ubuntu/work/bazelrc-lsp/vscode-extension/dist/bazelrc-lsp'
@@ -820,7 +818,7 @@ require('lazy').setup({
         },
         filetypes = { 'bazelrc' },
       })
-      vim.lsp.enable('bazelrc_lsp')
+      vim.lsp.enable 'bazelrc_lsp'
 
       vim.api.nvim_create_autocmd('BufWritePre', {
         pattern = { '*.cpp', '*.hpp', '*.c', '*.h', '.cc', '.hh', '.cxx', '.hxx', '*.sh', 'BUILD', 'WORKSPACE', '*.bazel', '*.bzl' },
