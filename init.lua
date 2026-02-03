@@ -681,7 +681,7 @@ require('lazy').setup({
 
       -- Set variables used by pylsp.
       -- Try to get config from environment variables, falling back to system defaults.
-      local pylsp_venv_path = vim.env.PYLSP_VENV_PATH or vim.fn.expand '~/.venv'
+      local pylsp_venv_path = vim.env.PYLSP_VENV_PATH or vim.fn.expand '~/work/modular/.venv'
       local python_exe = pylsp_venv_path .. '/bin/python'
       local ruff_exe = pylsp_venv_path .. '/bin/ruff'
 
