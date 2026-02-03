@@ -220,6 +220,8 @@ return {
       if is_remote then
         config.env = config.env or {}
         config.env.VIRTUAL_ENV = '/home/ubuntu/work/modular/.venv'
+        -- Redirect HuggingFace cache to avoid filling remote-nvim workspace
+        config.env.HF_HOME = '/home/ubuntu/.cache/huggingface'
       end
     end
 
