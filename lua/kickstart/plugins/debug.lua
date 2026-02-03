@@ -201,12 +201,26 @@ return {
 
     -- Install Python specific config.
     local dap_python = require 'dap-python'
-    dap_python.setup()
+
+    -- Check if we're on the remote (hydra) by looking for the venv
+    local remote_venv = '/home/ubuntu/work/modular/.venv/bin/python'
+    local is_remote = vim.fn.filereadable(remote_venv) == 1
+
+    if is_remote then
+      vim.notify('dap-python: using remote venv', vim.log.levels.INFO)
+      dap_python.setup(remote_venv)
+    else
+      dap_python.setup()
+    end
     dap_python.test_runner = 'pytest'
 
-    -- Always allow debugging third-party code.
+    -- Update all python configs
     for _, config in ipairs(dap.configurations.python) do
       config.justMyCode = false
+      if is_remote then
+        config.env = config.env or {}
+        config.env.VIRTUAL_ENV = '/home/ubuntu/work/modular/.venv'
+      end
     end
 
     -- Configure nvim-dap for C++.
