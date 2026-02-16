@@ -6,6 +6,7 @@ return {
   require 'custom.plugins.completions',
   require 'custom.plugins.git',
   require 'custom.plugins.markdown',
+  require 'custom.plugins.octo',
   require 'custom.plugins.oil',
   require 'custom.plugins.remote',
   require 'custom.plugins.zellij',
