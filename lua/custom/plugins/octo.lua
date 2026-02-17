@@ -45,6 +45,7 @@ return {
     { '<leader>os', '<cmd>Octo pr search<CR>', desc = '[O]cto: [S]earch pull requests' },
     { '<leader>oc', '<cmd>Octo pr checkout<CR>', desc = '[O]cto: [C]heckout current PR branch' },
     { '<leader>or', '<cmd>Octo review start<CR>', desc = '[O]cto: Start [R]eview' },
+    { '<leader>orb', '<cmd>Octo review browse<CR>', desc = '[O]cto: [R]eview [B]rowse' },
     { '<leader>ot', search_team_prs, desc = '[O]cto: [t]eam PRs (by created)' },
     { '<leader>oT', search_team_prs_updated, desc = '[O]cto: [T]eam PRs (by updated)' },
     { '<leader>om', search_my_prs, desc = '[O]cto: [M]y PRs' },
@@ -67,6 +68,8 @@ return {
         discussion = {
           open_in_browser = { lhs = '<leader>ob', desc = 'open discussion in browser' },
           copy_url = { lhs = '<leader>oy', desc = 'copy url to clipboard' },
+          add_comment = { lhs = '<leader>oca', desc = 'add comment' },
+          add_reply = { lhs = '<leader>ocr', desc = 'add reply' },
         },
         runs = {
           open_in_browser = { lhs = '<leader>ob', desc = 'open workflow run in browser' },
@@ -80,14 +83,20 @@ return {
           reload = { lhs = '<leader>ol', desc = 'reload issue' },
           open_in_browser = { lhs = '<leader>ob', desc = 'open issue in browser' },
           copy_url = { lhs = '<leader>oy', desc = 'copy url to clipboard' },
+          add_comment = { lhs = '<leader>oca', desc = 'add comment' },
+          add_reply = { lhs = '<leader>ocr', desc = 'add reply' },
         },
         pull_request = {
           reload = { lhs = '<leader>ol', desc = 'reload PR' },
           open_in_browser = { lhs = '<leader>ob', desc = 'open PR in browser' },
           copy_url = { lhs = '<leader>oy', desc = 'copy url to clipboard' },
+          add_comment = { lhs = '<leader>oca', desc = 'add comment' },
+          add_reply = { lhs = '<leader>ocr', desc = 'add reply' },
         },
         review_thread = {
           close_review_tab = { lhs = '<leader>oq', desc = 'close review tab' },
+          add_comment = { lhs = '<leader>oca', desc = 'add comment' },
+          add_reply = { lhs = '<leader>ocr', desc = 'add reply' },
         },
         submit_win = {
           approve_review = { lhs = '<leader>oa', desc = 'approve review' },
@@ -97,6 +106,7 @@ return {
         },
         review_diff = {
           close_review_tab = { lhs = '<leader>oq', desc = 'close review tab' },
+          add_review_comment = { lhs = '<leader>oca', desc = 'add review comment', mode = { 'n', 'x' } },
         },
         file_panel = {
           close_review_tab = { lhs = '<leader>oq', desc = 'close review tab' },
