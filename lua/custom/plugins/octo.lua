@@ -22,6 +22,16 @@ end
 local function search_team_prs() team_pr_query('created') end
 local function search_team_prs_updated() team_pr_query('updated') end
 
+local function search_my_prs()
+  local hours = vim.v.count > 0 and vim.v.count or nil
+  local time_filter = ''
+  if hours then
+    local since = os.date('!%Y-%m-%dT%H:%M:%S', os.time() - hours * 3600)
+    time_filter = 'created:>' .. since .. ' '
+  end
+  vim.cmd('Octo search is:pr is:open ' .. time_filter .. 'author:dukebw')
+end
+
 return {
   'pwntester/octo.nvim',
   dependencies = {
@@ -37,6 +47,7 @@ return {
     { '<leader>or', '<cmd>Octo review start<CR>', desc = '[O]cto: Start [R]eview' },
     { '<leader>ot', search_team_prs, desc = '[O]cto: [t]eam PRs (by created)' },
     { '<leader>oT', search_team_prs_updated, desc = '[O]cto: [T]eam PRs (by updated)' },
+    { '<leader>om', search_my_prs, desc = '[O]cto: [M]y PRs' },
   },
   config = function()
     require('octo').setup {
