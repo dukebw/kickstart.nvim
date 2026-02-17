@@ -8,10 +8,19 @@ local team = {
   'bhansconnect', 'KCaverly', 'tjk213', 'raiseirql', 'hsinyuting',
 }
 
-local function search_team_prs()
+local function team_pr_query(time_key)
+  local hours = vim.v.count > 0 and vim.v.count or nil
+  local time_filter = ''
+  if hours then
+    local since = os.date('!%Y-%m-%dT%H:%M:%S', os.time() - hours * 3600)
+    time_filter = time_key .. ':>' .. since .. ' '
+  end
   local authors = vim.tbl_map(function(a) return 'author:' .. a end, team)
-  vim.cmd('Octo search is:pr is:open -reviewed-by:dukebw ' .. table.concat(authors, ' '))
+  vim.cmd('Octo search is:pr is:open -reviewed-by:dukebw ' .. time_filter .. table.concat(authors, ' '))
 end
+
+local function search_team_prs() team_pr_query('created') end
+local function search_team_prs_updated() team_pr_query('updated') end
 
 return {
   'pwntester/octo.nvim',
@@ -26,7 +35,8 @@ return {
     { '<leader>os', '<cmd>Octo pr search<CR>', desc = '[O]cto: [S]earch pull requests' },
     { '<leader>oc', '<cmd>Octo pr checkout<CR>', desc = '[O]cto: [C]heckout current PR branch' },
     { '<leader>or', '<cmd>Octo review start<CR>', desc = '[O]cto: Start [R]eview' },
-    { '<leader>ot', search_team_prs, desc = '[O]cto: [T]eam PRs' },
+    { '<leader>ot', search_team_prs, desc = '[O]cto: [t]eam PRs (by created)' },
+    { '<leader>oT', search_team_prs_updated, desc = '[O]cto: [T]eam PRs (by updated)' },
   },
   config = function()
     require('octo').setup {
