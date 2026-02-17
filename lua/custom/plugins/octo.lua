@@ -67,9 +67,25 @@ return {
       },
     }
 
+    -- stylua: ignore
+    local team = {
+      'mehdi-goli', 'sabauma', 'laszlokindrat', 'cadddr', 'joeatodd',
+      'Princejain1101', 'ShanoToni', 'szbergeron', 'ehein6', 'AerialMantis',
+      'zbosons', 'k-w-w', 'manoj-rajagopalan', 'jackos', 'alexandrnikitin',
+      'mrterry', 'abduld', 'danteisalive', 'parallelistix', 'shaurya0',
+      'akirchhoff-modular', 'bethebunny', 'lshzh-ww', 'atomicapple0',
+      'bhansconnect', 'KCaverly', 'tjk213', 'raiseirql', 'hsinyuting',
+    }
+
+    local function search_team_prs()
+      local authors = vim.tbl_map(function(a) return 'author:' .. a end, team)
+      vim.cmd('Octo search is:pr is:open -reviewed-by:dukebw ' .. table.concat(authors, ' OR '))
+    end
+
     vim.keymap.set('n', '<leader>op', ':Octo pr list<CR>', { silent = true, desc = '[O]cto: List [P]ull requests' })
     vim.keymap.set('n', '<leader>os', ':Octo pr search<CR>', { silent = true, desc = '[O]cto: [S]earch pull requests' })
     vim.keymap.set('n', '<leader>oc', ':Octo pr checkout<CR>', { silent = true, desc = '[O]cto: [C]heckout current PR branch' })
     vim.keymap.set('n', '<leader>or', ':Octo review start<CR>', { silent = true, desc = '[O]cto: Start [R]eview' })
+    vim.keymap.set('n', '<leader>ot', search_team_prs, { silent = true, desc = '[O]cto: [T]eam PRs' })
   end,
 }
