@@ -46,6 +46,8 @@ return {
     { '<leader>oc', '<cmd>Octo pr checkout<CR>', desc = '[O]cto: [C]heckout current PR branch' },
     { '<leader>or', '<cmd>Octo review start<CR>', desc = '[O]cto: Start [R]eview' },
     { '<leader>orb', '<cmd>Octo review browse<CR>', desc = '[O]cto: [R]eview [B]rowse' },
+    { '<leader>ors', '<cmd>Octo review submit<CR>', desc = '[O]cto: [R]eview [S]ubmit' },
+    { '<leader>orc', '<cmd>Octo review close<CR>', desc = '[O]cto: [R]eview [C]lose' },
     { '<leader>ot', search_team_prs, desc = '[O]cto: [t]eam PRs (by created)' },
     { '<leader>oT', search_team_prs_updated, desc = '[O]cto: [T]eam PRs (by updated)' },
     { '<leader>om', search_my_prs, desc = '[O]cto: [M]y PRs' },
