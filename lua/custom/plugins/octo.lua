@@ -5,7 +5,7 @@ local team = {
   'zbosons', 'k-w-w', 'manoj-rajagopalan', 'jackos', 'alexandrnikitin',
   'mrterry', 'abduld', 'danteisalive', 'parallelistix', 'shaurya0',
   'akirchhoff-modular', 'bethebunny', 'lshzh-ww', 'atomicapple0',
-  'bhansconnect', 'KCaverly', 'tjk213', 'raiseirql', 'hsinyuting',
+  'bhansconnect', 'KCaverly', 'tjk213', 'raiseirql', 'hsinyuting', 'fricc33',
 }
 
 local function team_pr_query(time_key)
