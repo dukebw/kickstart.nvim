@@ -94,12 +94,12 @@ vim.filetype.add {
 -- terminal to respond). Use Cmd-V / terminal paste instead.
 vim.opt.clipboard = 'unnamedplus'
 
-local osc52 = require('vim.ui.clipboard.osc52')
+local osc52 = require 'vim.ui.clipboard.osc52'
 vim.g.clipboard = {
   name = 'OSC 52',
   copy = {
-    ['+'] = osc52.copy('+'),
-    ['*'] = osc52.copy('*'),
+    ['+'] = osc52.copy '+',
+    ['*'] = osc52.copy '*',
   },
   paste = {
     ['+'] = function()
@@ -224,7 +224,7 @@ vim.api.nvim_create_user_command('ClipboardCheck', function()
   end
 
   -- Environment
-  add('--- Environment ---')
+  add '--- Environment ---'
   add('Neovim version:   ' .. tostring(vim.version()))
   add('OS:               ' .. vim.uv.os_uname().sysname)
   add('$TERM:            ' .. (vim.env.TERM or '(unset)'))
@@ -232,38 +232,38 @@ vim.api.nvim_create_user_command('ClipboardCheck', function()
   add('$DISPLAY:         ' .. (vim.env.DISPLAY or '(unset)'))
 
   -- Remote-nvim detection
-  add('')
-  add('--- Remote-nvim ---')
+  add ''
+  add '--- Remote-nvim ---'
   local remote_host = vim.g.remote_neovim_host
   if remote_host then
     add('Session:          REMOTE (host = ' .. tostring(remote_host) .. ')')
     add('Client ID:        ' .. tostring(vim.g.remote_neovim_client_id or '(unset)'))
   else
-    add('Session:          LOCAL')
+    add 'Session:          LOCAL'
   end
 
   -- Clipboard provider
-  add('')
-  add('--- Clipboard provider ---')
+  add ''
+  add '--- Clipboard provider ---'
   add('vim.opt.clipboard: ' .. vim.inspect(vim.opt.clipboard:get()))
   local cb = vim.g.clipboard
   if cb then
     add('vim.g.clipboard:   ' .. (cb.name or '(unnamed)'))
   else
-    add('vim.g.clipboard:   (not set, using auto-detect)')
+    add 'vim.g.clipboard:   (not set, using auto-detect)'
   end
 
   -- Test write to + register
-  add('')
-  add('--- Register test ---')
+  add ''
+  add '--- Register test ---'
   local test_str = 'clipboard-check-' .. os.time()
   local ok, err = pcall(vim.fn.setreg, '+', test_str)
   if ok then
-    local readback = vim.fn.getreg('+')
+    local readback = vim.fn.getreg '+'
     if readback == test_str then
-      add('Write +register:   OK (round-trip verified)')
+      add 'Write +register:   OK (round-trip verified)'
     else
-      add('Write +register:   PARTIAL (wrote ok, readback differs)')
+      add 'Write +register:   PARTIAL (wrote ok, readback differs)'
       add('  wrote:    ' .. test_str)
       add('  readback: ' .. readback)
     end
@@ -272,8 +272,8 @@ vim.api.nvim_create_user_command('ClipboardCheck', function()
   end
 
   -- SSH_TTY check (critical for remote-nvim copy path)
-  add('')
-  add('--- SSH_TTY ---')
+  add ''
+  add '--- SSH_TTY ---'
   local tty = vim.env.SSH_TTY
   if tty then
     local fd = io.open(tty, 'w')
@@ -284,20 +284,15 @@ vim.api.nvim_create_user_command('ClipboardCheck', function()
       add('SSH_TTY:           ' .. tty .. ' (NOT writable)')
     end
   else
-    add('SSH_TTY:           (unset)')
+    add 'SSH_TTY:           (unset)'
   end
 
   -- RPC channels (for remote → local clipboard via RPC)
-  add('')
-  add('--- RPC channels ---')
+  add ''
+  add '--- RPC channels ---'
   local chans = vim.api.nvim_list_chans()
   for _, ch in ipairs(chans) do
-    local info = string.format(
-      '  ch %d: mode=%s client=%s',
-      ch.id or 0,
-      ch.mode or '?',
-      ch.client and ch.client.name or '(none)'
-    )
+    local info = string.format('  ch %d: mode=%s client=%s', ch.id or 0, ch.mode or '?', ch.client and ch.client.name or '(none)')
     if ch.client and ch.client.type then
       info = info .. ' type=' .. ch.client.type
     end
@@ -305,9 +300,9 @@ vim.api.nvim_create_user_command('ClipboardCheck', function()
   end
 
   -- Provider executables check
-  add('')
-  add('--- Provider tools ---')
-  for _, tool in ipairs({ 'pbcopy', 'pbpaste', 'xclip', 'xsel', 'wl-copy', 'wl-paste' }) do
+  add ''
+  add '--- Provider tools ---'
+  for _, tool in ipairs { 'pbcopy', 'pbpaste', 'xclip', 'xsel', 'wl-copy', 'wl-paste' } do
     local found = vim.fn.executable(tool) == 1
     if found then
       add('  ' .. tool .. ': found')
@@ -800,6 +795,22 @@ require('lazy').setup({
       -- Apply to all servers by default.
       vim.lsp.config('*', {
         capabilities = capabilities,
+      })
+
+      -- Prevent LSP servers from attaching to virtual buffers (e.g. octo://
+      -- review diffs). clangd in particular crashes on non-file URIs and
+      -- corrupts the diff view.
+      vim.api.nvim_create_autocmd('LspAttach', {
+        group = vim.api.nvim_create_augroup('kickstart-lsp-detach-virtual', { clear = true }),
+        callback = function(args)
+          local bufname = vim.api.nvim_buf_get_name(args.buf)
+          -- Allow file:// URIs and plain paths (no scheme); block everything else.
+          if bufname:match '^%a+://' and not bufname:match '^file://' then
+            vim.schedule(function()
+              vim.lsp.buf_detach_client(args.buf, args.data.client_id)
+            end)
+          end
+        end,
       })
 
       -- Enable the following language servers
