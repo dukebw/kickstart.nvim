@@ -81,6 +81,36 @@ vim.filetype.add {
   },
 }
 
+-- [[ Clipboard ]]
+-- Use OSC52 for clipboard everywhere. Requires a terminal that supports
+-- OSC52 (iTerm2, Kitty, Ghostty, WezTerm, etc.).
+--
+-- On neovim 0.12+, the built-in OSC52 copy routes through the UI protocol
+-- to the TUI client's terminal, so it works with remote-nvim.nvim's
+-- --remote-ui sessions (neovim/neovim#28792).
+--
+-- OSC52 paste is disabled: it causes timeouts in remote/headless sessions
+-- (terminals query for clipboard contents, but headless servers have no
+-- terminal to respond). Use Cmd-V / terminal paste instead.
+vim.opt.clipboard = 'unnamedplus'
+
+local osc52 = require('vim.ui.clipboard.osc52')
+vim.g.clipboard = {
+  name = 'OSC 52',
+  copy = {
+    ['+'] = osc52.copy('+'),
+    ['*'] = osc52.copy('*'),
+  },
+  paste = {
+    ['+'] = function()
+      return {}
+    end,
+    ['*'] = function()
+      return {}
+    end,
+  },
+}
+
 -- [[ Basic Keymaps ]]
 --  See `:help vim.keymap.set()`
 
@@ -185,6 +215,109 @@ vim.api.nvim_create_autocmd('TextYankPost', {
     vim.highlight.on_yank()
   end,
 })
+
+-- [[ Clipboard diagnostic ]]
+vim.api.nvim_create_user_command('ClipboardCheck', function()
+  local lines = {}
+  local function add(s)
+    lines[#lines + 1] = s
+  end
+
+  -- Environment
+  add('--- Environment ---')
+  add('Neovim version:   ' .. tostring(vim.version()))
+  add('OS:               ' .. vim.uv.os_uname().sysname)
+  add('$TERM:            ' .. (vim.env.TERM or '(unset)'))
+  add('$SSH_TTY:         ' .. (vim.env.SSH_TTY or '(unset)'))
+  add('$DISPLAY:         ' .. (vim.env.DISPLAY or '(unset)'))
+
+  -- Remote-nvim detection
+  add('')
+  add('--- Remote-nvim ---')
+  local remote_host = vim.g.remote_neovim_host
+  if remote_host then
+    add('Session:          REMOTE (host = ' .. tostring(remote_host) .. ')')
+    add('Client ID:        ' .. tostring(vim.g.remote_neovim_client_id or '(unset)'))
+  else
+    add('Session:          LOCAL')
+  end
+
+  -- Clipboard provider
+  add('')
+  add('--- Clipboard provider ---')
+  add('vim.opt.clipboard: ' .. vim.inspect(vim.opt.clipboard:get()))
+  local cb = vim.g.clipboard
+  if cb then
+    add('vim.g.clipboard:   ' .. (cb.name or '(unnamed)'))
+  else
+    add('vim.g.clipboard:   (not set, using auto-detect)')
+  end
+
+  -- Test write to + register
+  add('')
+  add('--- Register test ---')
+  local test_str = 'clipboard-check-' .. os.time()
+  local ok, err = pcall(vim.fn.setreg, '+', test_str)
+  if ok then
+    local readback = vim.fn.getreg('+')
+    if readback == test_str then
+      add('Write +register:   OK (round-trip verified)')
+    else
+      add('Write +register:   PARTIAL (wrote ok, readback differs)')
+      add('  wrote:    ' .. test_str)
+      add('  readback: ' .. readback)
+    end
+  else
+    add('Write +register:   FAILED (' .. tostring(err) .. ')')
+  end
+
+  -- SSH_TTY check (critical for remote-nvim copy path)
+  add('')
+  add('--- SSH_TTY ---')
+  local tty = vim.env.SSH_TTY
+  if tty then
+    local fd = io.open(tty, 'w')
+    if fd then
+      add('SSH_TTY:           ' .. tty .. ' (writable)')
+      fd:close()
+    else
+      add('SSH_TTY:           ' .. tty .. ' (NOT writable)')
+    end
+  else
+    add('SSH_TTY:           (unset)')
+  end
+
+  -- RPC channels (for remote → local clipboard via RPC)
+  add('')
+  add('--- RPC channels ---')
+  local chans = vim.api.nvim_list_chans()
+  for _, ch in ipairs(chans) do
+    local info = string.format(
+      '  ch %d: mode=%s client=%s',
+      ch.id or 0,
+      ch.mode or '?',
+      ch.client and ch.client.name or '(none)'
+    )
+    if ch.client and ch.client.type then
+      info = info .. ' type=' .. ch.client.type
+    end
+    add(info)
+  end
+
+  -- Provider executables check
+  add('')
+  add('--- Provider tools ---')
+  for _, tool in ipairs({ 'pbcopy', 'pbpaste', 'xclip', 'xsel', 'wl-copy', 'wl-paste' }) do
+    local found = vim.fn.executable(tool) == 1
+    if found then
+      add('  ' .. tool .. ': found')
+    end
+  end
+
+  -- Show results
+  local msg = table.concat(lines, '\n')
+  vim.notify(msg, vim.log.levels.INFO)
+end, { desc = 'Diagnose clipboard provider status' })
 
 -- [[ Install `lazy.nvim` plugin manager ]]
 --    See `:help lazy.nvim.txt` or https://github.com/folke/lazy.nvim for more info
@@ -685,8 +818,18 @@ require('lazy').setup({
       local python_exe = pylsp_venv_path .. '/bin/python'
       local ruff_exe = pylsp_venv_path .. '/bin/ruff'
 
+      -- The workspace root for compile_commands.json. When opening files
+      -- under bazel's external/ symlinks, neovim resolves symlinks into the
+      -- bazel cache and clangd picks up .clang-tidy/.clang-format in the
+      -- LLVM source tree as root markers instead of finding compile_commands.json
+      -- at the real workspace root. Passing --compile-commands-dir ensures clangd
+      -- always finds the compilation database.
+      local modular_root = os.getenv 'MODULAR_PATH' or vim.fn.expand '~/work/modular'
+
       local mason_servers = {
-        clangd = {},
+        clangd = {
+          cmd = { 'clangd', '--compile-commands-dir=' .. modular_root },
+        },
         -- gopls = {},
         -- pyright = {},
         -- rust_analyzer = {},
