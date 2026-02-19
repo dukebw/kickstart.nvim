@@ -99,6 +99,7 @@ return {
           close_review_tab = { lhs = '<leader>oq', desc = 'close review tab' },
           add_comment = { lhs = '<leader>oca', desc = 'add comment' },
           add_reply = { lhs = '<leader>ocr', desc = 'add reply' },
+          add_suggestion = { lhs = '<leader>ocs', desc = 'add suggestion' },
         },
         submit_win = {
           approve_review = { lhs = '<leader>oa', desc = 'approve review' },
@@ -109,6 +110,7 @@ return {
         review_diff = {
           close_review_tab = { lhs = '<leader>oq', desc = 'close review tab' },
           add_review_comment = { lhs = '<leader>oca', desc = 'add review comment', mode = { 'n', 'x' } },
+          add_review_suggestion = { lhs = '<leader>ocs', desc = 'add review suggestion', mode = { 'n', 'x' } },
         },
         file_panel = {
           close_review_tab = { lhs = '<leader>oq', desc = 'close review tab' },
