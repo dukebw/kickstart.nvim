@@ -85,29 +85,42 @@ vim.filetype.add {
 -- Use OSC52 for clipboard everywhere. Requires a terminal that supports
 -- OSC52 (iTerm2, Kitty, Ghostty, WezTerm, etc.).
 --
--- On neovim 0.12+, the built-in OSC52 copy routes through the UI protocol
--- to the TUI client's terminal, so it works with remote-nvim.nvim's
--- --remote-ui sessions (neovim/neovim#28792).
---
--- OSC52 paste is disabled: it causes timeouts in remote/headless sessions
--- (terminals query for clipboard contents, but headless servers have no
--- terminal to respond). Use Cmd-V / terminal paste instead.
-vim.opt.clipboard = 'unnamedplus'
-
+-- OSC52 clipboard: copy sends to system clipboard via terminal escape
+-- sequence (works locally and through remote-nvim.nvim on neovim 0.12+,
+-- see neovim/neovim#28792). Paste returns a local cache since OSC52 read
+-- queries hang (most terminals don't support clipboard query). Use Cmd-V
+-- for pasting content copied outside neovim.
 local osc52 = require 'vim.ui.clipboard.osc52'
+
+local clipboard_cache = {}
+
+local function make_osc52_copy(reg)
+  local osc_copy = osc52.copy(reg)
+  return function(lines, regtype)
+    clipboard_cache[reg] = { lines = vim.deepcopy(lines), regtype = regtype }
+    osc_copy(lines)
+  end
+end
+
+local function make_cached_paste(reg)
+  return function()
+    local entry = clipboard_cache[reg]
+    if entry and entry.lines then
+      return { vim.deepcopy(entry.lines), entry.regtype or 'v' }
+    end
+    return { {}, 'v' }
+  end
+end
+
 vim.g.clipboard = {
-  name = 'OSC 52',
+  name = 'OSC 52 (copy) + cache (paste)',
   copy = {
-    ['+'] = osc52.copy '+',
-    ['*'] = osc52.copy '*',
+    ['+'] = make_osc52_copy '+',
+    ['*'] = make_osc52_copy '*',
   },
   paste = {
-    ['+'] = function()
-      return {}
-    end,
-    ['*'] = function()
-      return {}
-    end,
+    ['+'] = make_cached_paste '+',
+    ['*'] = make_cached_paste '*',
   },
 }
 
