@@ -8,19 +8,20 @@ local team = {
   'bhansconnect', 'KCaverly', 'tjk213', 'raiseirql', 'hsinyuting', 'fricc33', 'tboerstad',
 }
 
-local function team_pr_query(time_key)
+local function team_pr_query(time_key, include_reviewed)
   local hours = vim.v.count > 0 and vim.v.count or nil
   local time_filter = ''
   if hours then
     local since = os.date('!%Y-%m-%dT%H:%M:%S', os.time() - hours * 3600)
     time_filter = time_key .. ':>' .. since .. ' '
   end
+  local reviewed_filter = include_reviewed and '' or '-reviewed-by:dukebw '
   local authors = vim.tbl_map(function(a) return 'author:' .. a end, team)
-  vim.cmd('Octo search is:pr is:open -reviewed-by:dukebw ' .. time_filter .. table.concat(authors, ' '))
+  vim.cmd('Octo search is:pr is:open ' .. reviewed_filter .. time_filter .. table.concat(authors, ' '))
 end
 
-local function search_team_prs() team_pr_query('created') end
-local function search_team_prs_updated() team_pr_query('updated') end
+local function search_team_prs_all() team_pr_query('updated', true) end
+local function search_team_prs_updated() team_pr_query('updated', false) end
 
 local function search_my_prs()
   local hours = vim.v.count > 0 and vim.v.count or nil
@@ -48,7 +49,7 @@ return {
     { '<leader>orb', '<cmd>Octo review browse<CR>', desc = '[O]cto: [R]eview [B]rowse' },
     { '<leader>ors', '<cmd>Octo review submit<CR>', desc = '[O]cto: [R]eview [S]ubmit' },
     { '<leader>orc', '<cmd>Octo review close<CR>', desc = '[O]cto: [R]eview [C]lose' },
-    { '<leader>ot', search_team_prs, desc = '[O]cto: [t]eam PRs (by created)' },
+    { '<leader>ot', search_team_prs_all, desc = '[O]cto: [t]eam PRs (all, by updated)' },
     { '<leader>oT', search_team_prs_updated, desc = '[O]cto: [T]eam PRs (by updated)' },
     { '<leader>om', search_my_prs, desc = '[O]cto: [M]y PRs' },
   },
