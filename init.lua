@@ -659,7 +659,30 @@ require('lazy').setup({
 
       -- Useful status updates for LSP.
       -- NOTE: `opts = {}` is the same as calling `require('fidget').setup({})`
-      { 'j-hui/fidget.nvim', opts = {} },
+      {
+        'j-hui/fidget.nvim',
+        opts = {
+          progress = {
+            display = {
+              format_message = function(msg)
+                local message = msg.message
+                if message == vim.NIL or type(message) ~= 'string' then
+                  message = nil
+                end
+                if not message then
+                  message = msg.done and 'Completed' or 'In progress...'
+                end
+                if type(msg.percentage) == 'number' then
+                  message = string.format('%s (%.0f%%)', message, msg.percentage)
+                elseif type(msg.percentage) == 'string' then
+                  message = string.format('%s (%s)', message, msg.percentage)
+                end
+                return message
+              end,
+            },
+          },
+        },
+      },
 
       -- Allows extra capabilities provided by blink.cmp.
       'saghen/blink.cmp',
