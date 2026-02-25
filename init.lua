@@ -87,9 +87,9 @@ vim.filetype.add {
 --
 -- OSC52 clipboard: copy sends to system clipboard via terminal escape
 -- sequence (works locally and through remote-nvim.nvim on neovim 0.12+,
--- see neovim/neovim#28792). Paste returns a local cache since OSC52 read
--- queries hang (most terminals don't support clipboard query). Use Cmd-V
--- for pasting content copied outside neovim.
+-- see neovim/neovim#28792). Paste strategy (checked at paste time):
+--   1. Local macOS: pbpaste reads system clipboard directly
+--   2. Remote: cached value from last "+y (use Cmd-V for external content)
 local osc52 = require 'vim.ui.clipboard.osc52'
 
 local clipboard_cache = {}
@@ -102,8 +102,16 @@ local function make_osc52_copy(reg)
   end
 end
 
-local function make_cached_paste(reg)
+local function make_paste(reg)
   return function()
+    -- Local macOS: read system clipboard directly.
+    if vim.fn.executable 'pbpaste' == 1 then
+      return { vim.fn.systemlist 'pbpaste', 'v' }
+    end
+
+    -- Remote: no way to pull from local clipboard (OSC52 read hangs,
+    -- UI protocol is one-way). Return cached value from last "+y.
+    -- Use Cmd-V / terminal paste for content copied outside neovim.
     local entry = clipboard_cache[reg]
     if entry and entry.lines then
       return { vim.deepcopy(entry.lines), entry.regtype or 'v' }
@@ -119,8 +127,8 @@ vim.g.clipboard = {
     ['*'] = make_osc52_copy '*',
   },
   paste = {
-    ['+'] = make_cached_paste '+',
-    ['*'] = make_cached_paste '*',
+    ['+'] = make_paste '+',
+    ['*'] = make_paste '*',
   },
 }
 

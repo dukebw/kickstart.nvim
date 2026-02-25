@@ -1,11 +1,11 @@
 -- stylua: ignore
 local team = {
-  'mehdi-goli', 'sabauma', 'laszlokindrat', 'cadddr', 'joeatodd',
+  'brod4910', 'mehdi-goli', 'sabauma', 'laszlokindrat', 'cadddr', 'joeatodd',
   'Princejain1101', 'ShanoToni', 'szbergeron', 'ehein6', 'AerialMantis',
   'zbosons', 'k-w-w', 'manoj-rajagopalan', 'jackos', 'alexandrnikitin',
   'mrterry', 'abduld', 'danteisalive', 'parallelistix', 'shaurya0',
   'akirchhoff-modular', 'bethebunny', 'lshzh-ww', 'atomicapple0',
-  'bhansconnect', 'KCaverly', 'tjk213', 'raiseirql', 'hsinyuting', 'fricc33', 'tboerstad',
+  'bhansconnect', 'KCaverly', 'tjk213', 'raiseirql', 'hsinyuting', 'tboerstad',
 }
 
 local function team_pr_query(time_key, include_reviewed)
@@ -16,12 +16,18 @@ local function team_pr_query(time_key, include_reviewed)
     time_filter = time_key .. ':>' .. since .. ' '
   end
   local reviewed_filter = include_reviewed and '' or '-reviewed-by:dukebw '
-  local authors = vim.tbl_map(function(a) return 'author:' .. a end, team)
+  local authors = vim.tbl_map(function(a)
+    return 'author:' .. a
+  end, team)
   vim.cmd('Octo search is:pr is:open ' .. reviewed_filter .. time_filter .. table.concat(authors, ' '))
 end
 
-local function search_team_prs_all() team_pr_query('updated', true) end
-local function search_team_prs_updated() team_pr_query('updated', false) end
+local function search_team_prs_all()
+  team_pr_query('updated', true)
+end
+local function search_team_prs_updated()
+  team_pr_query('updated', false)
+end
 
 local function search_my_prs()
   local hours = vim.v.count > 0 and vim.v.count or nil
