@@ -1,7 +1,30 @@
 return {
   'sindrets/diffview.nvim',
   config = function()
-    require('diffview').setup()
+    local actions = require('diffview.actions')
+
+    require('diffview').setup({
+      keymaps = {
+        view = {
+          { 'n', '[q', actions.select_prev_entry, { desc = 'Open previous file entry' } },
+          { 'n', ']q', actions.select_next_entry, { desc = 'Open next file entry' } },
+          { 'n', '<tab>', false },
+          { 'n', '<s-tab>', false },
+        },
+        file_panel = {
+          { 'n', '[q', actions.select_prev_entry, { desc = 'Open previous file entry' } },
+          { 'n', ']q', actions.select_next_entry, { desc = 'Open next file entry' } },
+          { 'n', '<tab>', false },
+          { 'n', '<s-tab>', false },
+        },
+        file_history_panel = {
+          { 'n', '[q', actions.select_prev_entry, { desc = 'Open previous file entry' } },
+          { 'n', ']q', actions.select_next_entry, { desc = 'Open next file entry' } },
+          { 'n', '<tab>', false },
+          { 'n', '<s-tab>', false },
+        },
+      },
+    })
 
     vim.keymap.set(
       'n',
