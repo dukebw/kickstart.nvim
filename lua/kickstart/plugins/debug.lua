@@ -203,7 +203,8 @@ return {
     local dap_python = require 'dap-python'
 
     -- Check if we're on the remote (hydra) by looking for the venv
-    local remote_venv = '/home/ubuntu/work/modular/.venv/bin/python'
+    local remote_venv_root = '/home/ubuntu/work/modular/.venv'
+    local remote_venv = remote_venv_root .. '/bin/python'
     local is_remote = vim.fn.filereadable(remote_venv) == 1
 
     if is_remote then
@@ -214,15 +215,25 @@ return {
     end
     dap_python.test_runner = 'pytest'
 
-    -- Update all python configs
-    for _, config in ipairs(dap.configurations.python) do
+    local function modular_python_env()
+      return {
+        VIRTUAL_ENV = remote_venv_root,
+        MODULAR_MOJO_MAX_IMPORT_PATH = remote_venv_root .. '/lib/mojo',
+        -- Redirect HuggingFace cache to avoid filling remote-nvim workspace
+        HF_HOME = '/home/ubuntu/.cache/huggingface',
+      }
+    end
+
+    dap.listeners.on_config['modular_python_env'] = function(config)
+      if config.type ~= 'python' then
+        return config
+      end
+
       config.justMyCode = false
       if is_remote then
-        config.env = config.env or {}
-        config.env.VIRTUAL_ENV = '/home/ubuntu/work/modular/.venv'
-        -- Redirect HuggingFace cache to avoid filling remote-nvim workspace
-        config.env.HF_HOME = '/home/ubuntu/.cache/huggingface'
+        config.env = vim.tbl_extend('force', modular_python_env(), config.env or {})
       end
+      return config
     end
 
     -- Configure nvim-dap for C++.
