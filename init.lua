@@ -981,26 +981,8 @@ require('lazy').setup({
       })
       vim.lsp.enable 'tblgen_lsp_server'
 
-      local modular_path = os.getenv 'MODULAR_PATH' or vim.fn.expand '~/work/modular'
-      local kernels = modular_path .. '/Kernels/mojo'
-      local oss_kernels = modular_path .. '/open-source/max/max/kernels/src'
-      local kernels_test = modular_path .. '/Kernels/test'
-      local stdlib = modular_path .. '/open-source/max/mojo/stdlib'
-      local extensibility = modular_path .. '/open-source/max/max/kernels/src/extensibility'
       vim.lsp.config('mojo', {
-        cmd = {
-          'mojo-lsp-server',
-          '-I',
-          kernels,
-          '-I',
-          oss_kernels,
-          '-I',
-          kernels_test,
-          '-I',
-          stdlib,
-          '-I',
-          extensibility,
-        },
+        cmd = { 'mojo-lsp-server' },
         filetypes = { 'mojo' },
         root_markers = { '.git' },
         single_file_support = true,
