@@ -27,6 +27,12 @@ vim.opt.showmode = false
 -- Enable break indent.
 vim.opt.breakindent = true
 
+-- Use explicit indentation defaults instead of heuristic detection.
+vim.opt.expandtab = true
+vim.opt.shiftwidth = 2
+vim.opt.tabstop = 2
+vim.opt.softtabstop = -1
+
 -- Save undo history.
 vim.opt.undofile = true
 
@@ -196,6 +202,10 @@ vim.keymap.set('n', '<C-n>', '<cmd>nohlsearch<CR>')
 -- Diagnostic keymaps.
 vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
 
+vim.keymap.set('n', '<leader>td', function()
+  vim.diagnostic.enable(not vim.diagnostic.is_enabled())
+end, { desc = '[T]oggle [D]iagnostics' })
+
 vim.keymap.set('n', '<leader>of', function()
   vim.diagnostic.open_float()
 end, { silent = true, desc = 'Show diagnostics in a floating window.' })
@@ -360,8 +370,6 @@ vim.opt.rtp:prepend(lazypath)
 -- NOTE: Here is where you install your plugins.
 require('lazy').setup({
   -- NOTE: Plugins can be added with a link (or for a github repo: 'owner/repo' link).
-  'tpope/vim-sleuth', -- Detect tabstop and shiftwidth automatically.
-
   -- NOTE: Plugins can also be added by using a table,
   -- with the first argument being the link and the following
   -- keys can be used to configure plugin behavior/loading/etc.
@@ -873,18 +881,8 @@ require('lazy').setup({
       local python_exe = pylsp_venv_path .. '/bin/python'
       local ruff_exe = pylsp_venv_path .. '/bin/ruff'
 
-      -- The workspace root for compile_commands.json. When opening files
-      -- under bazel's external/ symlinks, neovim resolves symlinks into the
-      -- bazel cache and clangd picks up .clang-tidy/.clang-format in the
-      -- LLVM source tree as root markers instead of finding compile_commands.json
-      -- at the real workspace root. Passing --compile-commands-dir ensures clangd
-      -- always finds the compilation database.
-      local modular_root = os.getenv 'MODULAR_PATH' or vim.fn.expand '~/work/modular'
-
       local mason_servers = {
-        clangd = {
-          cmd = { 'clangd', '--compile-commands-dir=' .. modular_root },
-        },
+        clangd = {},
         -- gopls = {},
         -- pyright = {},
         -- rust_analyzer = {},
