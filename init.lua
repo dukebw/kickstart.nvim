@@ -77,6 +77,10 @@ vim.filetype.add {
     ['.*%.ptx'] = 'asm',
     ['.*cpp%.inc'] = 'cpp',
     ['.*h%.inc'] = 'cpp',
+    ['.*/charts/.*/templates/.*%.yaml'] = 'helm',
+    ['.*/charts/.*/templates/.*%.yml'] = 'helm',
+    ['.*/charts/.*/values.*%.yaml'] = 'yaml.helm-values',
+    ['.*/charts/.*/values.*%.yml'] = 'yaml.helm-values',
     ['.*%.mdx'] = 'markdown',
     ['.*%.bazelrc'] = 'bazelrc',
     ['.*%.bazel'] = 'bzl',
@@ -672,6 +676,7 @@ require('lazy').setup({
       { 'williamboman/mason.nvim', config = true }, -- NOTE: Must be loaded before dependants.
       'williamboman/mason-lspconfig.nvim',
       'WhoIsSethDaniel/mason-tool-installer.nvim',
+      'b0o/SchemaStore.nvim',
 
       -- Useful status updates for LSP.
       -- NOTE: `opts = {}` is the same as calling `require('fidget').setup({})`
@@ -881,9 +886,21 @@ require('lazy').setup({
       local python_exe = pylsp_venv_path .. '/bin/python'
       local ruff_exe = pylsp_venv_path .. '/bin/ruff'
 
+      local yaml_schemas = require('schemastore').yaml.schemas()
+      yaml_schemas.kubernetes = {
+        '**/k8s/**/*.yaml',
+        '**/k8s/**/*.yml',
+        '**/kubernetes/**/*.yaml',
+        '**/kubernetes/**/*.yml',
+        '**/manifests/**/*.yaml',
+        '**/manifests/**/*.yml',
+      }
+
       local mason_servers = {
         clangd = {},
+        gh_actions_ls = {},
         -- gopls = {},
+        helm_ls = {},
         -- pyright = {},
         -- rust_analyzer = {},
         -- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
@@ -904,6 +921,23 @@ require('lazy').setup({
               },
               -- You can toggle below to ignore Lua_LS's noisy `missing-fields` warnings
               -- diagnostics = { disable = { 'missing-fields' } },
+            },
+          },
+        },
+        yamlls = {
+          settings = {
+            redhat = { telemetry = { enabled = false } },
+            yaml = {
+              completion = true,
+              format = { enable = true },
+              hover = true,
+              kubernetesCRDStore = { enable = true },
+              schemaStore = {
+                enable = false,
+                url = '',
+              },
+              schemas = yaml_schemas,
+              validate = true,
             },
           },
         },
@@ -1152,7 +1186,7 @@ require('lazy').setup({
     build = ':TSUpdate',
     config = function()
       local treesitter = require 'nvim-treesitter'
-      local languages = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' }
+      local languages = { 'bash', 'c', 'diff', 'helm', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc', 'yaml' }
 
       treesitter.setup {
         install_dir = vim.fn.stdpath 'data' .. '/site',
@@ -1160,9 +1194,27 @@ require('lazy').setup({
       treesitter.install(languages)
 
       vim.treesitter.language.register('bash', { 'bash', 'sh', 'zsh' })
+      vim.treesitter.language.register('yaml', { 'yaml', 'yaml.helm-values' })
 
       vim.api.nvim_create_autocmd('FileType', {
-        pattern = { 'bash', 'c', 'diff', 'help', 'html', 'lua', 'luadoc', 'markdown', 'query', 'sh', 'vim', 'vimdoc', 'zsh' },
+        pattern = {
+          'bash',
+          'c',
+          'diff',
+          'helm',
+          'help',
+          'html',
+          'lua',
+          'luadoc',
+          'markdown',
+          'query',
+          'sh',
+          'vim',
+          'vimdoc',
+          'yaml',
+          'yaml.helm-values',
+          'zsh',
+        },
         callback = function(args)
           local lang = vim.treesitter.language.get_lang(vim.bo[args.buf].filetype)
           if not lang then
