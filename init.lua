@@ -538,119 +538,6 @@ require('lazy').setup({
         builtin.find_files { cwd = vim.fn.stdpath 'config' }
       end, { desc = '[S]earch [N]eovim files' })
 
-      -- Upstream MLIR Telescope helpers
-      do
-        local function _join(...)
-          return (table.concat({ ... }, '/'):gsub('//+', '/'))
-        end
-
-        local function _read_first_line(p)
-          local f = io.open(p, 'r')
-          if not f then
-            return nil
-          end
-          local line = f:read '*l'
-          f:close()
-          if line then
-            return (vim.trim(line))
-          end
-          return nil
-        end
-
-        local function _is_dir(p)
-          return p and vim.fn.isdirectory(p) == 1
-        end
-
-        local function modular_repo_root()
-          local from_env = os.getenv 'MODULAR_PATH'
-          if _is_dir(from_env) then
-            return from_env
-          end
-          local marker = vim.fs.find('bazel/third-party/llvm.MODULE.bazel', { upward = true, path = vim.loop.cwd() })[1]
-          if marker then
-            return vim.fs.dirname(vim.fs.dirname(vim.fs.dirname(marker)))
-          end
-          return nil
-        end
-
-        local function llvm_commit(repo_root)
-          local m = _join(repo_root, 'bazel/third-party/llvm.MODULE.bazel')
-          local f = io.open(m, 'r')
-          if not f then
-            return nil
-          end
-          local s = f:read '*a'
-          f:close()
-          if not s then
-            return nil
-          end
-          return s:match 'LLVM_COMMIT%s*=%s*"([0-9a-f]+)"'
-        end
-
-        local function mlir_root()
-          local root = modular_repo_root()
-          if not root then
-            return nil, nil
-          end
-
-          -- 1) explicit override
-          local override_file = _join(root, '.derived/bazel/llvm-override.txt')
-          local override = _read_first_line(override_file)
-          if _is_dir(override) and _is_dir(_join(override, 'mlir')) then
-            return _join(override, 'mlir'), root
-          end
-
-          -- 2) symlink created by utils/llvm-init.sh
-          local symlink_mlir = _join(root, 'third-party/llvm/mlir')
-          if _is_dir(symlink_mlir) then
-            return symlink_mlir, root
-          end
-
-          -- 3) Bazel external
-          local bazel_mlir = _join(root, 'external/+llvm_configure+llvm-project/mlir')
-          if _is_dir(bazel_mlir) then
-            return bazel_mlir, root
-          end
-
-          return nil, root
-        end
-
-        -- Files under upstream MLIR
-        vim.keymap.set('n', '<leader>mf', function()
-          local mlir, repo = mlir_root()
-          if not mlir then
-            vim.notify('MLIR root not found. Run utils/llvm-init.sh once or build to materialize Bazel external.', vim.log.levels.WARN)
-            return
-          end
-          local sha = repo and llvm_commit(repo)
-          local title = 'MLIR files' .. (sha and (' (llvm ' .. string.sub(sha, 1, 12) .. ')') or '')
-          require('telescope.builtin').find_files {
-            cwd = mlir,
-            prompt_title = title,
-            -- Follow symlinks since Bazel external uses many.
-            find_command = { 'rg', '-L', '--ignore', '--hidden', '--files' },
-          }
-        end, { desc = '[M]LIR [F]iles (upstream)' })
-
-        -- Grep under upstream MLIR
-        vim.keymap.set('n', '<leader>mg', function()
-          local mlir, repo = mlir_root()
-          if not mlir then
-            vim.notify('MLIR root not found. Run utils/llvm-init.sh once or build to materialize Bazel external.', vim.log.levels.WARN)
-            return
-          end
-          local sha = repo and llvm_commit(repo)
-          local title = 'MLIR grep' .. (sha and (' (llvm ' .. string.sub(sha, 1, 12) .. ')') or '')
-          require('telescope.builtin').live_grep {
-            cwd = mlir,
-            prompt_title = title,
-            additional_args = function()
-              -- Follow symlinks in Bazel external.
-              return { '--hidden', '-L' }
-            end,
-          }
-        end, { desc = '[M]LIR [G]rep (upstream)' })
-      end
     end,
   },
 
@@ -881,8 +768,7 @@ require('lazy').setup({
       --        For example, to see the options for `lua_ls`, you could go to: https://luals.github.io/wiki/settings/
 
       -- Set variables used by pylsp.
-      -- Try to get config from environment variables, falling back to system defaults.
-      local pylsp_venv_path = vim.env.PYLSP_VENV_PATH or vim.fn.expand '~/work/modular/.venv'
+      local pylsp_venv_path = vim.env.PYLSP_VENV_PATH or (vim.fn.stdpath 'data' .. '/pylsp-venv')
       local python_exe = pylsp_venv_path .. '/bin/python'
       local ruff_exe = pylsp_venv_path .. '/bin/ruff'
 
@@ -947,8 +833,7 @@ require('lazy').setup({
         vim.lsp.config(server_name, server_opts)
       end
 
-      -- Set up pylsp manually: it is not managed by Mason because we want to
-      -- use the aspect_rules_py MAX venv.
+      -- Set up pylsp manually because it runs from a dedicated Python tooling venv.
       local pylsp_cfg = {
         cmd = { python_exe, '-m', 'pylsp' },
         settings = {
@@ -974,9 +859,7 @@ require('lazy').setup({
                 targetVersion = 'py39',
                 unsafeFixes = true,
               },
-              jedi = {
-                environment = python_exe,
-              },
+              jedi = {},
               pylsp_mypy = {
                 enabled = true,
                 live_mode = false,
@@ -997,14 +880,6 @@ require('lazy').setup({
       vim.lsp.enable 'pylsp'
 
       -- Set up LSP servers unsupported by Mason.
-      vim.lsp.config('mlir_lsp_server', {
-        cmd = {
-          -- Override mlir-lsp-server default with Modular LSP server.
-          'modular-lsp-server',
-        },
-      })
-      vim.lsp.enable 'mlir_lsp_server'
-
       vim.lsp.config('tblgen_lsp_server', {
         cmd = {
           'tblgen-lsp-server',
@@ -1012,14 +887,6 @@ require('lazy').setup({
         },
       })
       vim.lsp.enable 'tblgen_lsp_server'
-
-      vim.lsp.config('mojo', {
-        cmd = { 'mojo-lsp-server' },
-        filetypes = { 'mojo' },
-        root_markers = { '.git' },
-        single_file_support = true,
-      })
-      vim.lsp.enable 'mojo'
 
       -- Configure bazel and bazelrc LSPs.
       local bazelrc_lsp = '/home/ubuntu/work/bazelrc-lsp/vscode-extension/dist/bazelrc-lsp'
@@ -1036,20 +903,6 @@ require('lazy').setup({
         pattern = { '*.cpp', '*.hpp', '*.c', '*.h', '.cc', '.hh', '.cxx', '.hxx', '*.sh', 'BUILD', 'WORKSPACE', '*.bazel', '*.bzl' },
         callback = function()
           vim.lsp.buf.format { async = false }
-        end,
-      })
-
-      vim.api.nvim_create_autocmd('BufWritePost', {
-        pattern = { '*.mojo', '*.🔥' },
-        callback = function()
-          -- Save the current cursor position.
-          local cursor_pos = vim.api.nvim_win_get_cursor(0)
-          -- Get the current buffer's file name.
-          local file = vim.fn.expand '%:p'
-          -- Run mblack on the file.
-          vim.cmd('silent! !mblack ' .. file)
-          -- Restore the cursor position.
-          vim.api.nvim_win_set_cursor(0, cursor_pos)
         end,
       })
 
@@ -1120,7 +973,7 @@ require('lazy').setup({
       },
       formatters = {
         bazel = {
-          command = (os.getenv 'MODULAR_DERIVED_PATH' or '') .. '/build-bazel/bin/buildifier',
+          command = 'buildifier',
           args = { '-type=build' },
           stdin = true,
         },
@@ -1186,7 +1039,7 @@ require('lazy').setup({
     build = ':TSUpdate',
     config = function()
       local treesitter = require 'nvim-treesitter'
-      local languages = { 'bash', 'c', 'diff', 'helm', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc', 'yaml' }
+      local languages = { 'bash', 'c', 'diff', 'helm', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'python', 'query', 'vim', 'vimdoc', 'yaml' }
 
       treesitter.setup {
         install_dir = vim.fn.stdpath 'data' .. '/site',
@@ -1207,6 +1060,7 @@ require('lazy').setup({
           'lua',
           'luadoc',
           'markdown',
+          'python',
           'query',
           'sh',
           'vim',
