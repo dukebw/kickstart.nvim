@@ -859,7 +859,6 @@ require('lazy').setup({
                 targetVersion = 'py39',
                 unsafeFixes = true,
               },
-              jedi = {},
               pylsp_mypy = {
                 enabled = true,
                 live_mode = false,
