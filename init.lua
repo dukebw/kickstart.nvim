@@ -785,7 +785,32 @@ require('lazy').setup({
       local mason_servers = {
         clangd = {},
         gh_actions_ls = {},
-        -- gopls = {},
+        gopls = {
+          init_options = {
+            semanticTokens = true,
+          },
+          settings = {
+            gopls = {
+              semanticTokens = true,
+              usePlaceholders = true,
+              staticcheck = true,
+              analyses = {
+                nilness = true,
+                unusedparams = true,
+                unusedwrite = true,
+              },
+              hints = {
+                assignVariableTypes = true,
+                compositeLiteralFields = true,
+                compositeLiteralTypes = true,
+                constantValues = true,
+                functionTypeParameters = true,
+                parameterNames = true,
+                rangeVariableTypes = true,
+              },
+            },
+          },
+        },
         helm_ls = {},
         -- pyright = {},
         -- rust_analyzer = {},
@@ -917,6 +942,7 @@ require('lazy').setup({
       -- for you, so that they are available from within Neovim.
       local ensure_installed = vim.tbl_keys(mason_servers)
       vim.list_extend(ensure_installed, {
+        'goimports',
         'stylua', -- Used to format Lua code
       })
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
@@ -963,6 +989,7 @@ require('lazy').setup({
       formatters_by_ft = {
         lua = { 'stylua' },
         bzl = { 'bazel' },
+        go = { 'goimports' },
         python = { 'ruff_fix', 'ruff_format' },
         -- Conform can also run multiple formatters sequentially
         -- python = { "isort", "black" },
@@ -1038,7 +1065,7 @@ require('lazy').setup({
     build = ':TSUpdate',
     config = function()
       local treesitter = require 'nvim-treesitter'
-      local languages = { 'bash', 'c', 'diff', 'helm', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'python', 'query', 'vim', 'vimdoc', 'yaml' }
+      local languages = { 'bash', 'c', 'diff', 'go', 'gomod', 'gosum', 'gowork', 'helm', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'python', 'query', 'vim', 'vimdoc', 'yaml' }
 
       treesitter.setup {
         install_dir = vim.fn.stdpath 'data' .. '/site',
@@ -1053,6 +1080,10 @@ require('lazy').setup({
           'bash',
           'c',
           'diff',
+          'go',
+          'gomod',
+          'gosum',
+          'gowork',
           'helm',
           'help',
           'html',
