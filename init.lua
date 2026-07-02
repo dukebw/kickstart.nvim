@@ -71,12 +71,25 @@ vim.opt.scrolloff = 0
 
 -- Register .cpp.inc and .h.inc as C++ files.
 vim.filetype.add {
+  extension = {
+    mak = 'make',
+    mk = 'make',
+  },
+  filename = {
+    BSDmakefile = 'make',
+    GNUmakefile = 'make',
+    Makefile = 'make',
+    makefile = 'make',
+  },
   -- Match by pattern since that takes priority over extension.
   pattern = {
+    ['.*[Mm]akefile%..*'] = 'make',
     ['.*%.sass'] = 'asm',
     ['.*%.ptx'] = 'asm',
     ['.*cpp%.inc'] = 'cpp',
     ['.*h%.inc'] = 'cpp',
+    ['.*/%.github/workflows/.*%.yaml'] = 'yaml.github',
+    ['.*/%.github/workflows/.*%.yml'] = 'yaml.github',
     ['.*/charts/.*/templates/.*%.yaml'] = 'helm',
     ['.*/charts/.*/templates/.*%.yml'] = 'helm',
     ['.*/charts/.*/values.*%.yaml'] = 'yaml.helm-values',
@@ -90,6 +103,22 @@ vim.filetype.add {
     ['BUILD'] = 'bzl',
   },
 }
+
+vim.api.nvim_create_autocmd('FileType', {
+  desc = 'Use Makefile-friendly buffer defaults',
+  group = vim.api.nvim_create_augroup('makefile-options', { clear = true }),
+  pattern = { 'automake', 'make' },
+  callback = function()
+    -- Recipe lines require literal tabs; keep the conventional eight-column tab stops.
+    vim.bo.expandtab = false
+    vim.bo.shiftwidth = 8
+    vim.bo.softtabstop = 0
+    vim.bo.tabstop = 8
+    vim.bo.commentstring = '# %s'
+    vim.bo.makeprg = 'make'
+    vim.opt_local.iskeyword:append { '-' }
+  end,
+})
 
 -- [[ Clipboard ]]
 -- Use OSC52 for clipboard everywhere. Requires a terminal that supports
@@ -478,9 +507,11 @@ require('lazy').setup({
         pickers = {
           live_grep = {
             additional_args = function()
-              return { '--hidden' }
+              return { '--hidden', '--no-ignore-vcs', '--glob', '!**/.git/**' }
             end,
-            find_files = { hidden = true },
+          },
+          find_files = {
+            find_command = { 'rg', '--files', '--hidden', '--no-ignore-vcs', '--glob', '!**/.git/**' },
           },
         },
       }
@@ -495,7 +526,7 @@ require('lazy').setup({
       vim.keymap.set('n', '<leader>sk', builtin.keymaps, { desc = '[S]earch [K]eymaps' })
       vim.keymap.set('n', '<leader>sF', builtin.find_files, { desc = '[S]earch [F]iles' })
       vim.keymap.set('n', '<leader>sf', function()
-        builtin.find_files { find_command = { 'rg', '--ignore', '--hidden', '--files' } }
+        builtin.find_files { find_command = { 'rg', '--files', '--hidden', '--no-ignore-vcs', '--glob', '!**/.git/**' } }
       end, { desc = '[S]earch [F]iles.' })
       vim.keymap.set('n', '<leader>ss', builtin.builtin, { desc = '[S]earch [S]elect Telescope' })
       vim.keymap.set('n', '<leader>sw', builtin.grep_string, { desc = '[S]earch current [W]ord' })
@@ -537,7 +568,6 @@ require('lazy').setup({
       vim.keymap.set('n', '<leader>sn', function()
         builtin.find_files { cwd = vim.fn.stdpath 'config' }
       end, { desc = '[S]earch [N]eovim files' })
-
     end,
   },
 
@@ -724,7 +754,7 @@ require('lazy').setup({
           source = 'if_many', -- show source name only if >1 LSP
         },
         signs = true, -- keep the gutter icons you already see
-        underline = true,
+        underline = false,
         update_in_insert = false, -- don’t spam while you type
         severity_sort = true, -- error → warning → hint
       }
@@ -782,9 +812,26 @@ require('lazy').setup({
         '**/manifests/**/*.yml',
       }
 
+      local remote_clangd = require 'custom.remote_clangd'
+
       local mason_servers = {
-        clangd = {},
-        gh_actions_ls = {},
+        clangd = {
+          root_dir = function(bufnr, on_dir)
+            -- CUDA buffers matching custom.remote_clangd_projects are handled
+            -- by remote clangd with the target GPU toolchain.
+            if remote_clangd.should_handle_buffer(bufnr) then
+              return
+            end
+
+            local root = vim.fs.root(bufnr, { '.clangd', 'compile_commands.json', 'compile_flags.txt', '.git' })
+            if root then
+              on_dir(root)
+            end
+          end,
+        },
+        gh_actions_ls = {
+          filetypes = { 'yaml.github' },
+        },
         gopls = {
           init_options = {
             semanticTokens = true,
@@ -836,6 +883,7 @@ require('lazy').setup({
           },
         },
         yamlls = {
+          filetypes = { 'yaml', 'yaml.docker-compose', 'yaml.gitlab', 'yaml.helm-values', 'yaml.github' },
           settings = {
             redhat = { telemetry = { enabled = false } },
             yaml = {
@@ -858,9 +906,90 @@ require('lazy').setup({
         vim.lsp.config(server_name, server_opts)
       end
 
+      remote_clangd.setup { capabilities = capabilities }
+
       -- Set up pylsp manually because it runs from a dedicated Python tooling venv.
+      local function python_project_root(bufnr, on_dir)
+        local root = vim.fs.root(bufnr, { 'pyproject.toml', 'setup.py', 'setup.cfg', 'requirements.txt', 'Pipfile' })
+          or vim.fs.root(bufnr, '.git')
+        if root then
+          on_dir(root)
+        end
+      end
+
+      local function readable_paths(root, names)
+        local paths = {}
+        for _, name in ipairs(names) do
+          local path = vim.fs.joinpath(root, name)
+          if vim.fn.isdirectory(path) == 1 then
+            paths[#paths + 1] = path
+          end
+        end
+        return paths
+      end
+
+      local function project_python(root)
+        local venv_python = vim.fs.joinpath(root, '.venv', 'bin', 'python')
+        if vim.fn.executable(venv_python) == 1 then
+          return venv_python
+        end
+        return nil
+      end
+
+      local path_sep = vim.fn.has 'win32' == 1 and ';' or ':'
+
+      local function project_python_paths(root)
+        return readable_paths(root, { 'src', 'trt-llm', 'modelopt', 'stubs' })
+      end
+
+      local function project_python_env(root)
+        local project_paths = project_python_paths(root)
+        if #project_paths == 0 then
+          return nil
+        end
+
+        local joined_paths = table.concat(project_paths, path_sep)
+        return {
+          PYTHONPATH = joined_paths .. (vim.env.PYTHONPATH and (path_sep .. vim.env.PYTHONPATH) or ''),
+          MYPYPATH = joined_paths .. (vim.env.MYPYPATH and (path_sep .. vim.env.MYPYPATH) or ''),
+        }
+      end
+
+      local function configure_python_project(config, root)
+        local project_paths = project_python_paths(root)
+        if #project_paths == 0 then
+          return
+        end
+
+        local pylsp_settings = config.settings.pylsp
+        local plugins = pylsp_settings.plugins
+        plugins.jedi = vim.tbl_extend('force', plugins.jedi or {}, {
+          extra_paths = project_paths,
+          prioritize_extra_paths = true,
+        })
+
+        local venv_python = project_python(root)
+        if venv_python then
+          plugins.jedi.environment = venv_python
+          plugins.pylsp_mypy = vim.tbl_extend('force', plugins.pylsp_mypy or {}, {
+            overrides = { true, '--python-executable', venv_python },
+          })
+        end
+      end
+
       local pylsp_cfg = {
-        cmd = { python_exe, '-m', 'pylsp' },
+        cmd = function(dispatchers, config)
+          local env = project_python_env(config.root_dir or '')
+          return vim.lsp.rpc.start({ python_exe, '-m', 'pylsp' }, dispatchers, {
+            cwd = config.cmd_cwd,
+            env = env,
+            detached = config.detached,
+          })
+        end,
+        root_dir = python_project_root,
+        before_init = function(_, config)
+          configure_python_project(config, config.root_dir or '')
+        end,
         settings = {
           pylsp = {
             plugins = {
@@ -942,6 +1071,7 @@ require('lazy').setup({
       -- for you, so that they are available from within Neovim.
       local ensure_installed = vim.tbl_keys(mason_servers)
       vim.list_extend(ensure_installed, {
+        'actionlint',
         'goimports',
         'stylua', -- Used to format Lua code
       })
@@ -1067,7 +1197,27 @@ require('lazy').setup({
     build = ':TSUpdate',
     config = function()
       local treesitter = require 'nvim-treesitter'
-      local languages = { 'bash', 'c', 'diff', 'go', 'gomod', 'gosum', 'gowork', 'helm', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'python', 'query', 'vim', 'vimdoc', 'yaml' }
+      local languages = {
+        'bash',
+        'c',
+        'diff',
+        'go',
+        'gomod',
+        'gosum',
+        'gowork',
+        'helm',
+        'html',
+        'lua',
+        'luadoc',
+        'make',
+        'markdown',
+        'markdown_inline',
+        'python',
+        'query',
+        'vim',
+        'vimdoc',
+        'yaml',
+      }
 
       treesitter.setup {
         install_dir = vim.fn.stdpath 'data' .. '/site',
@@ -1075,7 +1225,8 @@ require('lazy').setup({
       treesitter.install(languages)
 
       vim.treesitter.language.register('bash', { 'bash', 'sh', 'zsh' })
-      vim.treesitter.language.register('yaml', { 'yaml', 'yaml.helm-values' })
+      vim.treesitter.language.register('make', { 'automake', 'make' })
+      vim.treesitter.language.register('yaml', { 'yaml', 'yaml.helm-values', 'yaml.github' })
 
       vim.api.nvim_create_autocmd('FileType', {
         pattern = {
@@ -1091,6 +1242,7 @@ require('lazy').setup({
           'html',
           'lua',
           'luadoc',
+          'make',
           'markdown',
           'python',
           'query',
@@ -1098,6 +1250,7 @@ require('lazy').setup({
           'vim',
           'vimdoc',
           'yaml',
+          'yaml.github',
           'yaml.helm-values',
           'zsh',
         },
