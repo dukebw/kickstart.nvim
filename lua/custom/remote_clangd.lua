@@ -70,7 +70,9 @@ local function match_buffer(bufnr)
     local local_prefix = normalize(project.local_prefix)
     if contains(project.filetypes or { 'cuda' }, filetype) and local_prefix and starts_with(path, local_prefix) then
       local root = project_root(bufnr, project)
-      if root then
+      local root_name_matches = root
+        and (not project.root_name_pattern or basename(root):match(project.root_name_pattern) ~= nil)
+      if root_name_matches then
         return project, root, remote_root_for(project, root)
       end
     end
@@ -87,9 +89,39 @@ local function client_name(project)
   return 'remote_clangd_' .. (project.name or 'default')
 end
 
+local function detach_local_clangd(bufnr, client)
+  local namespace = vim.lsp.diagnostic.get_namespace(client.id, false)
+  vim.diagnostic.reset(namespace, bufnr)
+  vim.lsp.buf_detach_client(bufnr, client.id)
+end
+
+local function schedule_restart(bufnr, project, root)
+  vim.schedule(function()
+    local key = client_name(project) .. ':' .. root .. ':' .. tostring(bufnr)
+    local attempts = (state.restart_attempts[key] or 0) + 1
+    state.restart_attempts[key] = attempts
+
+    if attempts > 5 then
+      vim.notify('remote clangd stopped repeatedly; not restarting automatically', vim.log.levels.WARN)
+      return
+    end
+
+    local delay = math.min(30000, 1000 * (2 ^ (attempts - 1)))
+    vim.defer_fn(function()
+      if vim.api.nvim_buf_is_valid(bufnr) and vim.api.nvim_buf_is_loaded(bufnr) then
+        M.start_for_buffer(bufnr)
+      end
+    end, delay)
+  end)
+end
+
 local function start_client(bufnr, project, root, remote_root)
   if not vim.api.nvim_buf_is_valid(bufnr) or not vim.api.nvim_buf_is_loaded(bufnr) then
     return
+  end
+
+  for _, client in ipairs(vim.lsp.get_clients { bufnr = bufnr, name = 'clangd' }) do
+    detach_local_clangd(bufnr, client)
   end
 
   for _, client in ipairs(vim.lsp.get_clients { bufnr = bufnr, name = client_name(project) }) do
@@ -98,38 +130,52 @@ local function start_client(bufnr, project, root, remote_root)
     end
   end
 
-  for _, client in ipairs(vim.lsp.get_clients { bufnr = bufnr, name = 'clangd' }) do
-    vim.lsp.buf_detach_client(bufnr, client.id)
+  -- Detached clients can leave diagnostics behind in an existing Nvim session.
+  vim.diagnostic.reset(nil, bufnr)
+
+  local cmd = {
+    project.wrapper or (vim.fn.expand '~/.local/bin/remote-clangd'),
+    '--local-root',
+    root,
+    '--remote-root',
+    remote_root,
+    '--ssh-alias',
+    project.ssh_alias,
+    '--clangd',
+    project.clangd or 'clangd-21',
+    '--compiler',
+    project.compiler or 'clang++-21',
+    '--cuda-arch',
+    project.cuda_arch or 'sm_100a',
+    '--cuda-path',
+    project.cuda_path or '/usr/local/cuda',
+  }
+  if project.compile_commands_dir then
+    local compile_commands_dir = project.compile_commands_dir
+    if not vim.startswith(compile_commands_dir, '/') then
+      compile_commands_dir = vim.fs.joinpath(remote_root, compile_commands_dir)
+    end
+    vim.list_extend(cmd, { '--compile-commands-dir', compile_commands_dir })
+  end
+  if project.container then
+    vim.list_extend(cmd, { '--container', project.container })
   end
 
   vim.lsp.start({
     name = client_name(project),
-    cmd = {
-      project.wrapper or (vim.fn.expand '~/.local/bin/remote-clangd'),
-      '--local-root',
-      root,
-      '--remote-root',
-      remote_root,
-      '--ssh-alias',
-      project.ssh_alias,
-      '--clangd',
-      project.clangd or 'clangd-21',
-      '--compiler',
-      project.compiler or 'clang++-21',
-      '--cuda-arch',
-      project.cuda_arch or 'sm_100a',
-      '--cuda-path',
-      project.cuda_path or '/usr/local/cuda',
-    },
+    cmd = cmd,
     root_dir = root,
     capabilities = state.capabilities,
+    on_exit = function()
+      schedule_restart(bufnr, project, root)
+    end,
   }, { bufnr = bufnr })
 end
 
 local function start_after_preflight(bufnr, project, root, remote_root)
   local key = (project.name or 'default') .. ':' .. root
 
-  if project.preflight == false or state.preflight[key] == 'done' or vim.fn.executable 'rexec' ~= 1 then
+  if project.preflight == false or state.preflight[key] == 'ready' or vim.fn.executable 'rexec' ~= 1 then
     start_client(bufnr, project, root, remote_root)
     return
   end
@@ -155,7 +201,13 @@ local function start_after_preflight(bufnr, project, root, remote_root)
   }, function(result)
     vim.schedule(function()
       if result.code == 0 then
-        state.preflight[key] = 'done'
+        -- Coalesce buffers starting together, but recheck the tunnel on later restarts.
+        state.preflight[key] = 'ready'
+        vim.defer_fn(function()
+          if state.preflight[key] == 'ready' then
+            state.preflight[key] = nil
+          end
+        end, 5000)
         start_client(bufnr, project, root, remote_root)
         return
       end
@@ -182,6 +234,7 @@ end
 function M.setup(opts)
   opts = opts or {}
   state.capabilities = opts.capabilities
+  pcall(vim.api.nvim_del_augroup_by_name, 'custom-remote-clangd-restart')
 
   if opts.projects then
     state.projects = opts.projects
@@ -212,30 +265,18 @@ function M.setup(opts)
     end,
   })
 
-  vim.api.nvim_create_autocmd('LspDetach', {
-    group = vim.api.nvim_create_augroup('custom-remote-clangd-restart', { clear = true }),
+  vim.api.nvim_create_autocmd('LspAttach', {
+    group = vim.api.nvim_create_augroup('custom-remote-clangd-local-guard', { clear = true }),
     callback = function(args)
       local client = vim.lsp.get_client_by_id(args.data.client_id)
-      if not client or not client.name:match '^remote_clangd_' then
+      if not client or client.name ~= 'clangd' or not M.should_handle_buffer(args.buf) then
         return
       end
 
-      local key = client.name .. ':' .. tostring(client.config.root_dir or '') .. ':' .. tostring(args.buf)
-      local attempts = (state.restart_attempts[key] or 0) + 1
-      state.restart_attempts[key] = attempts
-
-      if attempts > 5 then
-        vim.notify('remote clangd stopped repeatedly; not restarting automatically', vim.log.levels.WARN)
-        return
-      end
-
-      local delay = math.min(30000, 1000 * (2 ^ (attempts - 1)))
-
-      vim.defer_fn(function()
-        if vim.api.nvim_buf_is_valid(args.buf) and vim.api.nvim_buf_is_loaded(args.buf) then
-          M.start_for_buffer(args.buf)
-        end
-      end, delay)
+      detach_local_clangd(args.buf, client)
+      vim.schedule(function()
+        M.start_for_buffer(args.buf)
+      end)
     end,
   })
 
