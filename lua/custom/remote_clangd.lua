@@ -157,6 +157,17 @@ local function start_client(bufnr, project, root, remote_root)
     end
     vim.list_extend(cmd, { '--compile-commands-dir', compile_commands_dir })
   end
+  if project.cmake then
+    vim.list_extend(cmd, { '--cmake-source-dir', project.cmake.source_dir })
+    local environment_names = vim.tbl_keys(project.cmake.environment or {})
+    table.sort(environment_names)
+    for _, name in ipairs(environment_names) do
+      vim.list_extend(cmd, { '--cmake-env', name .. '=' .. project.cmake.environment[name] })
+    end
+    for _, arg in ipairs(project.cmake.args or {}) do
+      vim.list_extend(cmd, { '--cmake-arg', arg })
+    end
+  end
   if project.container then
     vim.list_extend(cmd, { '--container', project.container })
   end
@@ -192,11 +203,16 @@ local function start_after_preflight(bufnr, project, root, remote_root)
 
   state.preflight[key] = 'running'
 
+  local preflight_env = {
+    REXEC_LOCAL_ROOT = root,
+    REXEC_WORKDIR = remote_root,
+  }
+  if project.rexec_pod then
+    preflight_env.REXEC_POD = project.rexec_pod
+  end
+
   vim.system({ 'rexec', '--flush', '--quiet', 'true' }, {
-    env = {
-      REXEC_LOCAL_ROOT = root,
-      REXEC_WORKDIR = remote_root,
-    },
+    env = preflight_env,
     text = true,
   }, function(result)
     vim.schedule(function()
