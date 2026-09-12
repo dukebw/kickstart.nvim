@@ -245,9 +245,13 @@ return {
 
     local function read_config()
       local config_path = vim.fn.getcwd() .. '/.nvim-dap.json'
+      if not vim.uv.fs_stat(config_path) then
+        return nil
+      end
+
       local ok, content = pcall(vim.fn.readfile, config_path)
       if not ok then
-        vim.notify('Config file not found: ' .. config_path, vim.log.levels.WARN)
+        vim.notify('Could not read config file: ' .. config_path, vim.log.levels.WARN)
         return nil
       end
 
