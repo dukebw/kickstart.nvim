@@ -911,6 +911,7 @@ require('lazy').setup({
             },
           },
         },
+        taplo = {},
         vtsls = {
           settings = {
             javascript = vim.deepcopy(ts_language_settings),
@@ -1115,6 +1116,7 @@ require('lazy').setup({
       local ensure_installed = vim.tbl_keys(mason_servers)
       vim.list_extend(ensure_installed, {
         'actionlint',
+        'codelldb',
         'goimports',
         'prettier',
         'prettierd',
@@ -1168,6 +1170,8 @@ require('lazy').setup({
         bzl = { 'bazel' },
         go = { 'goimports' },
         python = { 'ruff_fix', 'ruff_format' },
+        rust = { 'rustfmt' },
+        toml = { 'taplo' },
         -- Conform can also run multiple formatters sequentially
         -- python = { "isort", "black" },
         --
@@ -1269,6 +1273,8 @@ require('lazy').setup({
         'markdown_inline',
         'python',
         'query',
+        'rust',
+        'toml',
         'tsx',
         'typescript',
         'vim',
@@ -1305,7 +1311,9 @@ require('lazy').setup({
           'markdown',
           'python',
           'query',
+          'rust',
           'sh',
+          'toml',
           'typescript',
           'typescriptreact',
           'vim',

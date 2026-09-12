@@ -10,5 +10,6 @@ return {
   require 'custom.plugins.octo',
   require 'custom.plugins.oil',
   require 'custom.plugins.remote',
+  require 'custom.plugins.rust',
   require 'custom.plugins.zellij',
 }
