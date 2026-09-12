@@ -17,6 +17,9 @@ return {
       environment = {
         OPAL_PREFIX = '/opt/hpcx/ompi',
       },
+      mirror_build_paths = {
+        '_deps/nanobind-src/include',
+      },
       args = {
         '-G',
         'Ninja',
@@ -47,7 +50,8 @@ return {
     remote_prefix = '/workspace',
     rexec_pod = 'clangd',
     ssh_alias = 'baseten-remote-clangd-pod',
-    clangd = 'clangd-18',
+    -- Pod apt only has clangd-18, which rejects sm_100a; 22.x lives in the workspace emptyDir.
+    clangd = '/workspace/.remote-clangd-toolchain/clangd_22.1.6/bin/clangd',
     compiler = 'clang++-18',
     cuda_arch = 'sm_100a',
     cuda_path = '/usr/local/cuda',

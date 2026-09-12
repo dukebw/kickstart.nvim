@@ -167,6 +167,9 @@ local function start_client(bufnr, project, root, remote_root)
     for _, arg in ipairs(project.cmake.args or {}) do
       vim.list_extend(cmd, { '--cmake-arg', arg })
     end
+    for _, path in ipairs(project.cmake.mirror_build_paths or {}) do
+      vim.list_extend(cmd, { '--mirror-build-path', path })
+    end
   end
   if project.container then
     vim.list_extend(cmd, { '--container', project.container })
