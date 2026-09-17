@@ -1,15 +1,10 @@
--- stylua: ignore
-local team = {
-  'brod4910', 'mehdi-goli', 'sabauma', 'laszlokindrat', 'cadddr', 'joeatodd',
-  'Princejain1101', 'ShanoToni', 'szbergeron', 'ehein6', 'AerialMantis',
-  'zbosons', 'k-w-w', 'manoj-rajagopalan', 'jackos', 'alexandrnikitin',
-  'mrterry', 'abduld', 'danteisalive', 'parallelistix', 'shaurya0',
-  'akirchhoff-modular', 'bethebunny', 'lshzh-ww', 'atomicapple0',
-  'bhansconnect', 'tjk213', 'raiseirql', 'hsinyuting', 'tboerstad',
-  'aarnphm', 'AustinDoolittle', 'TilliFe', 'Real-VeerSandhu',
-}
+local team = { 'adesai773', 'Stelath', 'ShounakRay' }
 
 local function team_pr_query(time_key, include_reviewed)
+  if #team == 0 then
+    vim.notify('No followed authors configured', vim.log.levels.INFO)
+    return
+  end
   local hours = vim.v.count > 0 and vim.v.count or nil
   local time_filter = ''
   if hours then
